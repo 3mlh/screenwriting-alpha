@@ -6,8 +6,11 @@ import Link from 'next/link'
 import { getSupabaseServerClient } from '@/lib/supabase/server'
 import { listProjects } from '@/lib/data/projects'
 import { listAllScripts } from '@/lib/data/scripts'
+import { listMyInvites } from '@/lib/data/invites'
+import { requireUser } from '@/lib/auth/permissions'
 import type { Project } from '@/types/screenplay'
 import type { ScriptListItem } from '@/lib/data/scripts'
+import { PendingInvites } from './PendingInvites'
 
 export const metadata = { title: 'Home — Writer\'s Room' }
 
@@ -82,9 +85,21 @@ function ProjectCard({ project }: { project: Project }) {
 
       {/* Info */}
       <div className="px-4 py-3">
-        <h3 className="text-sm font-semibold text-gray-900 truncate group-hover:text-amber-800 transition-colors">
-          {project.title}
-        </h3>
+        <div className="flex items-center gap-1.5 min-w-0">
+          {project.memberCount > 1 ? (
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="flex-shrink-0 text-amber-600" aria-label="Shared">
+              <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" />
+              <path d="M23 21v-2a4 4 0 00-3-3.87" /><path d="M16 3.13a4 4 0 010 7.75" />
+            </svg>
+          ) : (
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="flex-shrink-0 text-gray-400" aria-label="Private">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0110 0v4" />
+            </svg>
+          )}
+          <h3 className="text-sm font-semibold text-gray-900 truncate group-hover:text-amber-800 transition-colors">
+            {project.title}
+          </h3>
+        </div>
         {project.description ? (
           <p className="text-xs text-gray-500 mt-0.5 truncate">{project.description}</p>
         ) : (
@@ -126,13 +141,18 @@ function ScriptRow({ script }: { script: ScriptListItem }) {
 
 export default async function DashboardPage() {
   const supabase = await getSupabaseServerClient()
-  const [projects, recentScripts] = await Promise.all([
+  const user = await requireUser(supabase)
+  const [projects, recentScripts, pendingInvites] = await Promise.all([
     listProjects(supabase),
     listAllScripts(supabase, 8),
+    listMyInvites(supabase, user.id),
   ])
 
   return (
     <div className="px-8 py-8 max-w-6xl">
+      {/* Pending invites */}
+      <PendingInvites initialInvites={pendingInvites} />
+
       {/* Projects section */}
       <div className="mb-10">
         <div className="flex items-center justify-between mb-5">

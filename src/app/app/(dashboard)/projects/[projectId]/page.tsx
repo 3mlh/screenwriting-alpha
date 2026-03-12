@@ -2,10 +2,11 @@
 //
 // RSC — fetches project + scripts server-side.
 
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { getSupabaseServerClient } from '@/lib/supabase/server'
 import { getProject } from '@/lib/data/projects'
 import { listScripts } from '@/lib/data/scripts'
+import { getProjectRole } from '@/lib/auth/permissions'
 import { ProjectDetailClient } from './ProjectDetailClient'
 
 type Props = { params: Promise<{ projectId: string }> }
@@ -21,12 +22,23 @@ export default async function ProjectDetailPage({ params }: Props) {
   const { projectId } = await params
   const supabase = await getSupabaseServerClient()
 
-  const [project, scripts] = await Promise.all([
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/auth/login')
+
+  const [project, scripts, role] = await Promise.all([
     getProject(supabase, projectId),
     listScripts(supabase, projectId),
+    getProjectRole(supabase, projectId),
   ])
 
-  if (!project) notFound()
+  if (!project || !role) notFound()
 
-  return <ProjectDetailClient project={project} scripts={scripts} />
+  return (
+    <ProjectDetailClient
+      project={project}
+      scripts={scripts}
+      userId={user.id}
+      currentUserRole={role}
+    />
+  )
 }

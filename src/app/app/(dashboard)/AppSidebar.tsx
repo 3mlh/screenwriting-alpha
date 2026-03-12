@@ -89,7 +89,7 @@ function NavItem({ href, icon, label, active, disabled }: NavItemProps) {
   )
 }
 
-export function AppSidebar({ userEmail }: { userEmail: string }) {
+export function AppSidebar({ userEmail, displayName }: { userEmail: string; displayName: string }) {
   const pathname = usePathname()
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -106,10 +106,8 @@ export function AppSidebar({ userEmail }: { userEmail: string }) {
 
   const isHome = pathname === '/app'
 
-  // Derive initials for avatar
-  const initials = userEmail
-    ? userEmail[0].toUpperCase()
-    : '?'
+  const label = displayName || userEmail
+  const initials = label ? label[0].toUpperCase() : '?'
 
   return (
     <>
@@ -153,26 +151,22 @@ export function AppSidebar({ userEmail }: { userEmail: string }) {
 
         {/* Footer — user */}
         <div className="px-4 py-4 border-t border-stone-200">
-          <div className="flex items-center gap-2.5">
+          <Link href="/app/settings" className="flex items-center gap-2.5 rounded-lg hover:bg-stone-200 -mx-1 px-1 py-1 transition-colors group">
             <div className="w-7 h-7 rounded-full bg-gray-700 flex items-center justify-center flex-shrink-0">
               <span className="text-white text-xs font-medium">{initials}</span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs text-gray-600 truncate">{userEmail}</p>
+              <p className="text-xs font-medium text-gray-800 truncate">{label}</p>
+              {displayName && <p className="text-[10px] text-gray-400 truncate">{userEmail}</p>}
             </div>
-            <button
-              onClick={handleSignOut}
-              disabled={isPending}
-              className="text-xs text-gray-400 hover:text-gray-700 disabled:opacity-50 flex-shrink-0"
-              title="Sign out"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
-                <polyline points="16 17 21 12 16 7" />
-                <line x1="21" y1="12" x2="9" y2="12" />
-              </svg>
-            </button>
-          </div>
+          </Link>
+          <button
+            onClick={handleSignOut}
+            disabled={isPending}
+            className="mt-2 w-full text-left text-xs text-gray-400 hover:text-gray-700 disabled:opacity-50 px-1"
+          >
+            Sign out
+          </button>
         </div>
       </aside>
 

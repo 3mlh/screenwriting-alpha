@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { getSupabaseServerClient } from '@/lib/supabase/server'
+import { getProfile } from '@/lib/data/profiles'
 import { AppSidebar } from './AppSidebar'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -10,9 +11,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   if (!user) redirect('/auth/login')
 
+  const profile = await getProfile(supabase, user.id)
+  const displayName = profile?.displayName || user.email || ''
+
   return (
     <div className="flex h-screen overflow-hidden bg-stone-100">
-      <AppSidebar userEmail={user.email ?? ''} />
+      <AppSidebar userEmail={user.email ?? ''} displayName={displayName} />
       <main className="flex-1 overflow-y-auto">{children}</main>
     </div>
   )

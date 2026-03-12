@@ -15,10 +15,14 @@ import { safeValidateBlocks } from '@/lib/validation/block.schema'
 
 type AppSupabaseClient = SupabaseClient<Database>
 type ScriptRow = Database['public']['Tables']['scripts']['Row']
+type ScriptRowWithCount = ScriptRow & {
+  script_members?: { count: number }[]
+  project?: { project_members?: { count: number }[] } | null
+}
 
 // ── Row → domain type ─────────────────────────────────────────────────────────
 
-function toScript(row: ScriptRow): Script {
+function toScript(row: ScriptRowWithCount): Script {
   // Validate blocks from DB — if corrupted, return empty array rather than crash.
   const validation = safeValidateBlocks(row.blocks)
   const blocks: Block[] = validation.success ? validation.data : []
@@ -31,6 +35,8 @@ function toScript(row: ScriptRow): Script {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     createdByUserId: row.created_by,
+    memberCount: row.script_members?.[0]?.count ?? 0,
+    projectMemberCount: row.project?.project_members?.[0]?.count ?? 1,
   }
 }
 
@@ -42,9 +48,12 @@ export interface ScriptListItem {
   title: string
   createdAt: string
   updatedAt: string
+  memberCount: number
 }
 
-type ScriptListRow = Pick<ScriptRow, 'id' | 'project_id' | 'title' | 'created_at' | 'updated_at'>
+type ScriptListRow = Pick<ScriptRow, 'id' | 'project_id' | 'title' | 'created_at' | 'updated_at'> & {
+  script_members?: { count: number }[]
+}
 
 function toScriptListItem(row: ScriptListRow): ScriptListItem {
   return {
@@ -53,6 +62,7 @@ function toScriptListItem(row: ScriptListRow): ScriptListItem {
     title: row.title,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    memberCount: row.script_members?.[0]?.count ?? 0,
   }
 }
 
@@ -64,7 +74,7 @@ export async function listScripts(
 ): Promise<ScriptListItem[]> {
   const { data, error } = await supabase
     .from('scripts')
-    .select('id, project_id, title, created_at, updated_at')
+    .select('id, project_id, title, created_at, updated_at, script_members(count)')
     .eq('project_id', projectId)
     .order('updated_at', { ascending: false })
 
@@ -78,12 +88,12 @@ export async function getScript(
 ): Promise<Script | null> {
   const { data, error } = await supabase
     .from('scripts')
-    .select('*')
+    .select('*, script_members(count), project:projects!inner(project_members(count))')
     .eq('id', scriptId)
     .single()
 
   if (error || !data) return null
-  return toScript(data as unknown as ScriptRow)
+  return toScript(data as unknown as ScriptRowWithCount)
 }
 
 // Lightweight: just returns the blocks column.
@@ -127,7 +137,7 @@ export async function createScript(
     .single()
 
   if (error || !data) throw error ?? new Error('Failed to create script')
-  return toScript(data as unknown as ScriptRow)
+  return toScript(data as unknown as ScriptRowWithCount)
 }
 
 export async function updateScriptMeta(
@@ -145,7 +155,7 @@ export async function updateScriptMeta(
     .single()
 
   if (error || !data) return null
-  return toScript(data as unknown as ScriptRow)
+  return toScript(data as unknown as ScriptRowWithCount)
 }
 
 export async function saveScriptBlocks(
@@ -171,7 +181,7 @@ export async function listAllScripts(
 ): Promise<ScriptListItem[]> {
   const { data, error } = await supabase
     .from('scripts')
-    .select('id, project_id, title, created_at, updated_at')
+    .select('id, project_id, title, created_at, updated_at, script_members(count)')
     .order('updated_at', { ascending: false })
     .limit(limit)
 

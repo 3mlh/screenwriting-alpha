@@ -7,6 +7,7 @@
 import { notFound, redirect } from 'next/navigation'
 import { getSupabaseServerClient } from '@/lib/supabase/server'
 import { getScript } from '@/lib/data/scripts'
+import { getEffectiveScriptRole } from '@/lib/auth/permissions'
 import { ScriptEditorClient } from './ScriptEditorClient'
 
 type Props = { params: Promise<{ scriptId: string }> }
@@ -25,13 +26,20 @@ export default async function ScriptEditorPage({ params }: Props) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
 
-  const script = await getScript(supabase, scriptId)
-  if (!script) notFound()
+  const [script, role] = await Promise.all([
+    getScript(supabase, scriptId),
+    getEffectiveScriptRole(supabase, scriptId),
+  ])
+  if (!script || !role) notFound()
+
+  const readOnly = role === 'viewer'
 
   return (
     <ScriptEditorClient
       script={script}
       userId={user.id}
+      readOnly={readOnly}
+      currentUserRole={role}
     />
   )
 }

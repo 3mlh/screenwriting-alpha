@@ -19,6 +19,8 @@ export type Json =
 export type PermissionLevel = 'owner' | 'editor' | 'viewer'
 
 type SnapshotTrigger = 'manual' | 'autosave' | 'revision_open' | 'revision_close'
+type InviteStatus = 'pending' | 'accepted' | 'declined'
+type ResourceType = 'project' | 'script'
 
 export interface Database {
   public: {
@@ -220,6 +222,47 @@ export interface Database {
           }
         ]
       }
+      invites: {
+        Row: {
+          id: string
+          resource_type: ResourceType
+          resource_id: string
+          invited_user_id: string
+          invited_by: string
+          role: PermissionLevel
+          status: InviteStatus
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          resource_type: ResourceType
+          resource_id: string
+          invited_user_id: string
+          invited_by: string
+          role: PermissionLevel
+          status?: InviteStatus
+          created_at?: string
+        }
+        Update: {
+          status?: InviteStatus
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'invites_invited_user_id_fkey'
+            columns: ['invited_user_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'invites_invited_by_fkey'
+            columns: ['invited_by']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          }
+        ]
+      }
       audit_logs: {
         Row: {
           id: string
@@ -246,7 +289,24 @@ export interface Database {
       }
     }
     Views: Record<string, never>
-    Functions: Record<string, never>
+    Functions: {
+      is_project_member: {
+        Args: { p_project_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      project_role: {
+        Args: { p_project_id: string; p_user_id: string }
+        Returns: PermissionLevel | null
+      }
+      effective_script_role: {
+        Args: { p_script_id: string; p_user_id: string }
+        Returns: PermissionLevel | null
+      }
+      lookup_user_by_email: {
+        Args: { p_email: string }
+        Returns: { user_id: string; display_name: string }[]
+      }
+    }
     Enums: {
       permission_level: PermissionLevel
     }

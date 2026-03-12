@@ -104,6 +104,8 @@ export interface Script {
   createdAt: string
   updatedAt: string
   createdByUserId: string
+  memberCount: number
+  projectMemberCount: number
 }
 
 // ─── Project ─────────────────────────────────────────────────────────────────
@@ -115,6 +117,7 @@ export interface Project {
   createdByUserId: string
   createdAt: string
   updatedAt: string
+  memberCount: number
 }
 
 // ─── Permissions ─────────────────────────────────────────────────────────────
@@ -135,6 +138,37 @@ export interface ScriptMember {
   role: PermissionLevel
   invitedByUserId: string
   addedAt: string
+}
+
+// Enriched with profile data for UI display
+export interface MemberProfile {
+  userId: string
+  displayName: string
+  avatarUrl?: string | null
+  role: PermissionLevel
+  addedAt: string
+  accessVia?: 'direct' | 'project'
+}
+
+// ─── Invites ──────────────────────────────────────────────────────────────────
+
+export type InviteStatus = 'pending' | 'accepted' | 'declined'
+
+export interface Invite {
+  id: string
+  resourceType: 'project' | 'script'
+  resourceId: string
+  invitedUserId: string
+  invitedBy: string
+  role: PermissionLevel
+  status: InviteStatus
+  createdAt: string
+}
+
+// Enriched with resource + inviter display info (for dashboard)
+export interface InviteWithContext extends Invite {
+  resourceTitle: string
+  invitedByName: string
 }
 
 // ─── Revision Types ───────────────────────────────────────────────────────────
