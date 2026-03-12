@@ -8,20 +8,20 @@ export default function Home() {
           Screenwriting Alpha
         </h1>
         <p className="text-gray-500 max-w-md">
-          Professional screenplay editor. Milestone 1 — Editor Foundation.
+          Professional screenplay editor. Structured block data. No formatting lock-in.
         </p>
-        <div className="flex gap-4 justify-center">
+        <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Link
-            href="/editor"
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+            href="/app"
+            className="px-6 py-3 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800 transition-colors"
           >
-            Open Editor
+            Sign in
           </Link>
           <Link
             href="/editor?demo=true"
             className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors"
           >
-            Load Demo Script
+            Try demo (no account)
           </Link>
         </div>
       </div>

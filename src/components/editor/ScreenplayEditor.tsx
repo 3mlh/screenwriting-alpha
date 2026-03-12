@@ -14,6 +14,7 @@ import { $getRoot, $getSelection, $isRangeSelection } from 'lexical'
 import { SCREENPLAY_NODES } from './ScreenplayNodes'
 import { BlockTypePlugin } from './BlockTypePlugin'
 import { BlockTypeSelectorPlugin } from './BlockTypeSelectorPlugin'
+import { AutosavePlugin } from './AutosavePlugin'
 import { lexicalToBlocks } from './serialization/lexicalToBlocks'
 import { $loadBlocksIntoEditor } from './serialization/blocksToLexical'
 import { $createSceneHeadingNode } from './nodes/SceneHeadingNode'
@@ -87,6 +88,9 @@ function ActiveScenePlugin(): null {
 export interface ScreenplayEditorProps {
   initialBlocks?: Block[]
   readOnly?: boolean
+  // When provided, AutosavePlugin is mounted and saves blocks to this script ID.
+  // Omit for the M1 demo editor (no backend).
+  scriptId?: string
 }
 
 // ─── Editor ───────────────────────────────────────────────────────────────────
@@ -94,6 +98,7 @@ export interface ScreenplayEditorProps {
 export function ScreenplayEditor({
   initialBlocks,
   readOnly = false,
+  scriptId,
 }: ScreenplayEditorProps): React.ReactElement {
   const setBlocks = useScriptStore((s) => s.setBlocks)
   const setEditorDirty = useScriptStore((s) => s.setEditorDirty)
@@ -157,6 +162,7 @@ export function ScreenplayEditor({
         <InitialStatePlugin initialBlocks={initialBlocks} />
         {!readOnly && <BlockTypePlugin />}
         {!readOnly && <ActiveScenePlugin />}
+        {!readOnly && scriptId && <AutosavePlugin scriptId={scriptId} />}
         {process.env.NODE_ENV !== 'production' && <DevToolsPlugin />}
       </LexicalComposer>
     </div>

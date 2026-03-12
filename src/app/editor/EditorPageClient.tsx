@@ -73,7 +73,10 @@ export function EditorPageClient() {
 
       {/* ── Status bar ───────────────────────────────────────────────────── */}
       <div className="sp-status-bar">
-        <span className="sp-status-hint">M1 — Local state only. No backend.</span>
+        <span className="sp-status-hint">Demo — Local state only. No backend.</span>
+        <span className={isDirty ? 'text-amber-500' : 'text-green-500'}>
+          {isDirty ? 'Unsaved changes' : 'Local only'}
+        </span>
         <span className="ml-auto sp-status-hint">
           DevTools → <code>window.__getBlocks()</code>
         </span>

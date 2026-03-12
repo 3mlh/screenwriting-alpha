@@ -1,0 +1,11 @@
+-- ── Seed data for local development ───────────────────────────────────────────
+--
+-- Run after: supabase db reset
+-- This seed creates no data by default — sign up via the app to create a profile.
+-- Add your own test data here as needed during development.
+
+-- Example: If you want a deterministic test project after seeding, uncomment and
+-- replace the UUID with your own user ID from auth.users:
+--
+-- INSERT INTO projects (id, title, created_by)
+-- VALUES ('10000000-0000-0000-0000-000000000001', 'Test Project', '<your-user-id>');
