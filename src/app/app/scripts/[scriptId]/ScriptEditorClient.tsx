@@ -34,24 +34,14 @@ export function ScriptEditorClient({ script, userId, readOnly = false, currentUs
       {/* ── Top toolbar ────────────────────────────────────────────────────── */}
       <header className="editor-toolbar">
         <div className="flex items-center gap-3">
-          <button
-            className="editor-toolbar-icon-btn"
-            onClick={() => setOutlineOpen((o) => !o)}
-            aria-label={outlineOpen ? 'Hide outline' : 'Show outline'}
-            title={outlineOpen ? 'Hide outline' : 'Show outline'}
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <rect x="1" y="3" width="14" height="1.5" rx="0.75" fill="currentColor" />
-              <rect x="1" y="7.25" width="14" height="1.5" rx="0.75" fill="currentColor" />
-              <rect x="1" y="11.5" width="14" height="1.5" rx="0.75" fill="currentColor" />
-            </svg>
-          </button>
-
           <Link
             href={`/app/projects/${script.projectId}`}
-            className="text-sm font-semibold text-gray-700 hover:text-gray-900 tracking-tight"
+            className="flex items-center gap-2 hover:opacity-80 transition-opacity"
           >
-            Screenwriting Alpha
+            <div className="w-6 h-6 rounded-md bg-amber-700 flex items-center justify-center flex-shrink-0">
+              <span className="text-white text-xs font-bold">W</span>
+            </div>
+            <span className="text-sm font-semibold text-gray-900">Writer&apos;s Room</span>
           </Link>
           <span className="text-gray-300">|</span>
           <span className="flex items-center gap-1.5 min-w-0">
@@ -91,16 +81,41 @@ export function ScriptEditorClient({ script, userId, readOnly = false, currentUs
 
       {/* ── Content area ───────────────────────────────────────────────────── */}
       <div className="editor-content">
-        {outlineOpen && (
-          <aside className="editor-outline-sidebar">
-            <div className="outline-sidebar-header">
-              <span className="outline-sidebar-title">Outline</span>
-            </div>
-            <div className="outline-sidebar-body">
-              <OutlinePanel />
-            </div>
-          </aside>
-        )}
+        {/* Left rail */}
+        <div className="editor-left-rail">
+          <button
+            className={`editor-rail-btn${outlineOpen ? ' active' : ''}`}
+            onClick={() => setOutlineOpen((o) => !o)}
+            aria-label={outlineOpen ? 'Hide outline' : 'Show outline'}
+            title={outlineOpen ? 'Hide outline' : 'Show outline'}
+          >
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <rect x="1" y="3" width="14" height="1.5" rx="0.75" fill="currentColor" />
+              <rect x="1" y="7.25" width="14" height="1.5" rx="0.75" fill="currentColor" />
+              <rect x="1" y="11.5" width="14" height="1.5" rx="0.75" fill="currentColor" />
+            </svg>
+          </button>
+          <button
+            className="editor-rail-btn"
+            disabled
+            aria-label="Revisions (coming soon)"
+            title="Revisions (coming soon)"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+              <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+              <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+            </svg>
+          </button>
+        </div>
+
+        <aside className={`editor-outline-sidebar${outlineOpen ? '' : ' collapsed'}`}>
+          <div className="outline-sidebar-header">
+            <span className="outline-sidebar-title">Outline</span>
+          </div>
+          <div className="outline-sidebar-body">
+            <OutlinePanel />
+          </div>
+        </aside>
 
         <main className="editor-main">
           <ScreenplayEditor
