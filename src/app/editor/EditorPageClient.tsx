@@ -1,7 +1,9 @@
 'use client'
 
+import { useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { ScreenplayEditor } from '@/components/editor/ScreenplayEditor'
+import { OutlinePanel } from '@/components/outline/OutlinePanel'
 import { DEMO_BLOCKS } from '@/lib/demo/demoScript'
 import { useScriptStore } from '@/stores/scriptStore'
 
@@ -10,12 +12,25 @@ export function EditorPageClient() {
   const isDemo = searchParams.get('demo') === 'true'
   const blocks = useScriptStore((s) => s.blocks)
   const isDirty = useScriptStore((s) => s.isDirty)
+  const [outlineOpen, setOutlineOpen] = useState(true)
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-100">
-      {/* Toolbar */}
-      <header className="sticky top-0 z-20 bg-white border-b border-gray-200 px-4 py-2 flex items-center justify-between">
+    <div className="editor-root">
+      {/* ── Top toolbar ──────────────────────────────────────────────────── */}
+      <header className="editor-toolbar">
         <div className="flex items-center gap-3">
+          <button
+            className="editor-toolbar-icon-btn"
+            onClick={() => setOutlineOpen((o) => !o)}
+            aria-label={outlineOpen ? 'Hide outline' : 'Show outline'}
+            title={outlineOpen ? 'Hide outline' : 'Show outline'}
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <rect x="1" y="3" width="14" height="1.5" rx="0.75" fill="currentColor" />
+              <rect x="1" y="7.25" width="14" height="1.5" rx="0.75" fill="currentColor" />
+              <rect x="1" y="11.5" width="14" height="1.5" rx="0.75" fill="currentColor" />
+            </svg>
+          </button>
           <span className="text-sm font-semibold text-gray-700 tracking-tight">
             Screenwriting Alpha
           </span>
@@ -32,24 +47,35 @@ export function EditorPageClient() {
           <span className={isDirty ? 'text-amber-500' : 'text-green-500'}>
             {isDirty ? 'Unsaved changes' : 'Saved locally'}
           </span>
-          <span className="text-gray-300">Enter for next block · Shift+Enter to exit dialogue</span>
+          <span className="text-gray-300">
+            Enter for next block · Shift+Enter to exit dialogue
+          </span>
         </div>
       </header>
 
-      {/* Editor */}
-      <main className="flex-1">
-        <ScreenplayEditor
-          initialBlocks={isDemo ? DEMO_BLOCKS : undefined}
-        />
-      </main>
+      {/* ── Content area: sidebar + editor ───────────────────────────────── */}
+      <div className="editor-content">
+        {outlineOpen && (
+          <aside className="editor-outline-sidebar">
+            <div className="outline-sidebar-header">
+              <span className="outline-sidebar-title">Outline</span>
+            </div>
+            <div className="outline-sidebar-body">
+              <OutlinePanel />
+            </div>
+          </aside>
+        )}
 
-      {/* Status bar */}
+        <main className="editor-main">
+          <ScreenplayEditor initialBlocks={isDemo ? DEMO_BLOCKS : undefined} />
+        </main>
+      </div>
+
+      {/* ── Status bar ───────────────────────────────────────────────────── */}
       <div className="sp-status-bar">
-        <span className="sp-status-hint">
-          M1 — Local state only. No backend.
-        </span>
+        <span className="sp-status-hint">M1 — Local state only. No backend.</span>
         <span className="ml-auto sp-status-hint">
-          Open DevTools console → <code>window.__getBlocks()</code> to inspect Block[]
+          DevTools → <code>window.__getBlocks()</code>
         </span>
       </div>
     </div>

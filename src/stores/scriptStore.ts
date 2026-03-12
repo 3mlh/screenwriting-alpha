@@ -17,6 +17,9 @@ interface ScriptState {
 
   // Block type of the currently focused block, for the status bar.
   focusedBlockType: string | null
+
+  // The scene heading block id of the scene the cursor is currently in.
+  activeSceneId: string | null
 }
 
 // ─── Actions ──────────────────────────────────────────────────────────────────
@@ -26,6 +29,7 @@ interface ScriptActions {
   setScript: (script: Script | null) => void
   setEditorDirty: (dirty: boolean) => void
   setFocusedBlockType: (type: string | null) => void
+  setActiveSceneId: (id: string | null) => void
   reset: () => void
 }
 
@@ -36,6 +40,7 @@ const initialState: ScriptState = {
   script: null,
   isDirty: false,
   focusedBlockType: null,
+  activeSceneId: null,
 }
 
 // ─── Store ────────────────────────────────────────────────────────────────────
@@ -62,6 +67,11 @@ export const useScriptStore = create<ScriptState & ScriptActions>()(
     setFocusedBlockType: (type) =>
       set((state) => {
         state.focusedBlockType = type
+      }),
+
+    setActiveSceneId: (id) =>
+      set((state) => {
+        state.activeSceneId = id
       }),
 
     reset: () =>

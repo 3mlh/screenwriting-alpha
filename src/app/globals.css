@@ -17,10 +17,163 @@
   --sp-text: #1a1a1a;
 }
 
+/* ─── Editor root layout ──────────────────────────────────────────────────── */
+
+.editor-root {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #f3f4f6;
+  overflow: hidden;
+}
+
+.editor-toolbar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 0.5rem 1rem;
+  z-index: 20;
+}
+
+.editor-toolbar-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  color: #6b7280;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  transition: background 0.1s, color 0.1s;
+}
+
+.editor-toolbar-icon-btn:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.editor-content {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+.editor-outline-sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  background: #ffffff;
+  border-right: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.outline-sidebar-header {
+  flex-shrink: 0;
+  padding: 0.75rem 1rem 0.5rem;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.outline-sidebar-title {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #9ca3af;
+}
+
+.outline-sidebar-body {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.editor-main {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* ─── Outline panel ───────────────────────────────────────────────────────── */
+
+.outline-panel {
+  padding-bottom: 2rem;
+}
+
+.outline-panel--empty {
+  padding: 2rem 1rem;
+  font-size: 0.75rem;
+  color: #9ca3af;
+  line-height: 1.6;
+}
+
+.outline-section-group {
+  /* no extra spacing; section header provides it */
+}
+
+.outline-section-header {
+  padding: 0.9rem 1rem 0.3rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #6b7280;
+}
+
+.outline-scene-row {
+  padding: 0.45rem 1rem 0.45rem 0.875rem;
+  cursor: pointer;
+  border-left: 2px solid transparent;
+  transition: background 0.1s;
+}
+
+.outline-scene-row:hover {
+  background: #f9fafb;
+}
+
+.outline-scene-row--active {
+  border-left-color: #3b82f6;
+  background: #eff6ff;
+}
+
+.outline-scene-heading {
+  font-family: var(--sp-font);
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #111827;
+  line-height: 1.35;
+  /* clamp to 2 lines */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.outline-scene-number {
+  color: #9ca3af;
+  margin-right: 0.3ch;
+}
+
+.outline-scene-description {
+  margin-top: 0.15rem;
+  font-size: 0.67rem;
+  color: #9ca3af;
+  line-height: 1.3;
+  /* clamp to 1 line */
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 /* ─── Editor shell ────────────────────────────────────────────────────────── */
 
 .screenplay-editor-shell {
-  min-height: 100vh;
+  min-height: 100%;
   background: #e8e8e8;
 }
 
@@ -226,8 +379,7 @@
 /* ─── Status bar ──────────────────────────────────────────────────────────── */
 
 .sp-status-bar {
-  position: sticky;
-  bottom: 0;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 0.5rem;

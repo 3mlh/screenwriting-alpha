@@ -8,8 +8,8 @@ import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin'
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin'
 import LexicalErrorBoundary from '@lexical/react/LexicalErrorBoundary'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import type { EditorState } from 'lexical'
-import { $getRoot } from 'lexical'
+import type { EditorState, LexicalNode } from 'lexical'
+import { $getRoot, $getSelection, $isRangeSelection } from 'lexical'
 
 import { SCREENPLAY_NODES } from './ScreenplayNodes'
 import { BlockTypePlugin } from './BlockTypePlugin'
@@ -19,6 +19,8 @@ import { $loadBlocksIntoEditor } from './serialization/blocksToLexical'
 import { $createSceneHeadingNode } from './nodes/SceneHeadingNode'
 import { useScriptStore } from '@/stores/scriptStore'
 import { DevToolsPlugin } from './DevToolsPlugin'
+import { getParentScreenplayBlock } from './blockTypeUtils'
+import { $isScreenplayBlockNode } from './nodes/ScreenplayBlockNode'
 import type { Block } from '@/types/screenplay'
 
 // ─── Initial state plugin ─────────────────────────────────────────────────────
@@ -45,6 +47,41 @@ function InitialStatePlugin({ initialBlocks }: { initialBlocks?: Block[] }): nul
   return null
 }
 
+// ─── Active scene tracker ─────────────────────────────────────────────────────
+//
+// Walks Lexical siblings backward from the focused block to find the nearest
+// scene_heading, then updates the store so the outline panel can highlight it.
+
+function ActiveScenePlugin(): null {
+  const [editor] = useLexicalComposerContext()
+  const setActiveSceneId = useScriptStore((s) => s.setActiveSceneId)
+
+  useEffect(() => {
+    return editor.registerUpdateListener(({ editorState }) => {
+      editorState.read(() => {
+        const selection = $getSelection()
+        if (!$isRangeSelection(selection)) {
+          setActiveSceneId(null)
+          return
+        }
+        let node: LexicalNode | null = getParentScreenplayBlock(
+          selection.anchor.getNode()
+        )
+        while (node) {
+          if ($isScreenplayBlockNode(node) && node.getBlockType() === 'scene_heading') {
+            setActiveSceneId(node.getBlockId())
+            return
+          }
+          node = node.getPreviousSibling()
+        }
+        setActiveSceneId(null)
+      })
+    })
+  }, [editor, setActiveSceneId])
+
+  return null
+}
+
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 export interface ScreenplayEditorProps {
@@ -60,6 +97,15 @@ export function ScreenplayEditor({
 }: ScreenplayEditorProps): React.ReactElement {
   const setBlocks = useScriptStore((s) => s.setBlocks)
   const setEditorDirty = useScriptStore((s) => s.setEditorDirty)
+
+  // Pre-populate the store immediately so the outline panel has data before
+  // OnChangePlugin fires its first update after the Lexical round-trip.
+  useEffect(() => {
+    if (initialBlocks && initialBlocks.length > 0) {
+      setBlocks(initialBlocks)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const onChange = useCallback(
     (editorState: EditorState) => {
@@ -110,6 +156,7 @@ export function ScreenplayEditor({
         <OnChangePlugin onChange={onChange} ignoreSelectionChange />
         <InitialStatePlugin initialBlocks={initialBlocks} />
         {!readOnly && <BlockTypePlugin />}
+        {!readOnly && <ActiveScenePlugin />}
         {process.env.NODE_ENV !== 'production' && <DevToolsPlugin />}
       </LexicalComposer>
     </div>
