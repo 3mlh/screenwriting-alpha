@@ -370,6 +370,73 @@
   margin-bottom: 0.5em;
 }
 
+/* ─── Ghost text (empty block hints) ─────────────────────────────────────── */
+/*
+ * When a block contains only a <br> (Lexical's empty-block placeholder),
+ * show a faint type hint via ::before. This updates automatically as the
+ * user Tabs through block types.
+ */
+
+/*
+ * Ghost text only appears on the focused (cursor-active) block.
+ * FocusedBlockPlugin sets data-focused="true" on that block's DOM element.
+ * position: absolute keeps the caret at the block's left edge.
+ */
+.sp-block[data-focused="true"]:has(> br:only-child) {
+  position: relative;
+}
+
+.sp-block[data-focused="true"]:has(> br:only-child)::before {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  color: #bbb;
+  font-style: normal;
+  font-weight: normal;
+  text-transform: none;
+}
+
+.sp-scene-heading[data-focused="true"]:has(> br:only-child)::before {
+  content: 'INT./EXT. LOCATION — DAY';
+  text-transform: uppercase;
+  font-weight: bold;
+}
+
+.sp-action[data-focused="true"]:has(> br:only-child)::before {
+  content: 'Action...';
+}
+
+.sp-character[data-focused="true"]:has(> br:only-child)::before {
+  content: 'CHARACTER NAME';
+  text-transform: uppercase;
+}
+
+.sp-dialogue[data-focused="true"]:has(> br:only-child)::before {
+  content: 'Dialogue...';
+}
+
+.sp-parenthetical[data-focused="true"]:has(> br:only-child)::before {
+  content: '(beat)';
+  font-style: italic;
+}
+
+.sp-transition[data-focused="true"]:has(> br:only-child)::before {
+  content: 'CUT TO:';
+  text-transform: uppercase;
+  right: 0;
+  left: unset;
+}
+
+.sp-shot[data-focused="true"]:has(> br:only-child)::before {
+  content: 'SHOT';
+  text-transform: uppercase;
+}
+
+.sp-summary[data-focused="true"]:has(> br:only-child)::before {
+  content: 'Scene summary...';
+}
+
 /* ─── Selection ───────────────────────────────────────────────────────────── */
 
 .screenplay-content-editable ::selection {

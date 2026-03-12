@@ -1,5 +1,5 @@
 // GET    /api/scripts/[scriptId]  — get script with blocks
-// PATCH  /api/scripts/[scriptId]  — update title/format
+// PATCH  /api/scripts/[scriptId]  — update title
 // DELETE /api/scripts/[scriptId]  — delete script (owner)
 
 import { NextResponse } from 'next/server'
@@ -28,7 +28,6 @@ export async function GET(_req: Request, { params }: Params) {
 
 const patchSchema = z.object({
   title: z.string().min(1).max(200).optional(),
-  format: z.enum(['feature', 'pilot', 'spec', 'short']).optional(),
 })
 
 export async function PATCH(request: Request, { params }: Params) {

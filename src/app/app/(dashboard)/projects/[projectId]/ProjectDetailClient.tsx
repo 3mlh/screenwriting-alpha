@@ -21,12 +21,6 @@ function timeAgo(dateString: string): string {
   return new Date(dateString).toLocaleDateString()
 }
 
-const FORMAT_LABELS: Record<string, string> = {
-  feature: 'Feature',
-  pilot: 'Pilot',
-  spec: 'Spec',
-  short: 'Short',
-}
 
 export function ProjectDetailClient({
   project,
@@ -117,9 +111,6 @@ export function ProjectDetailClient({
                   Title
                 </th>
                 <th className="text-left text-[10px] font-semibold uppercase tracking-wider text-gray-400 py-2.5 px-4">
-                  Format
-                </th>
-                <th className="text-left text-[10px] font-semibold uppercase tracking-wider text-gray-400 py-2.5 px-4">
                   Modified
                 </th>
               </tr>
@@ -151,11 +142,6 @@ export function ProjectDetailClient({
                         {script.title}
                       </span>
                     </Link>
-                  </td>
-                  <td className="py-3 px-4">
-                    <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-stone-100 text-stone-600">
-                      {FORMAT_LABELS[script.format] ?? script.format}
-                    </span>
                   </td>
                   <td className="py-3 px-4 text-xs text-gray-400">{timeAgo(script.updatedAt)}</td>
                 </tr>

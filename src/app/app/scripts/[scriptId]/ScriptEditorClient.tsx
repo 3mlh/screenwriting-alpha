@@ -86,9 +86,7 @@ export function ScriptEditorClient({ script }: Props) {
 
       {/* ── Status bar ─────────────────────────────────────────────────────── */}
       <div className="sp-status-bar">
-        <span className="sp-status-hint capitalize">{script.format}</span>
-        <span className="text-gray-300">·</span>
-        <span className="sp-status-hint">
+<span className="sp-status-hint">
           Last saved {new Date(script.updatedAt).toLocaleTimeString()}
         </span>
         <span className="ml-auto sp-status-hint">

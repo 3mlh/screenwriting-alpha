@@ -26,7 +26,6 @@ export async function GET(_req: Request, { params }: Params) {
 
 const createScriptSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200),
-  format: z.enum(['feature', 'pilot', 'spec', 'short']).default('feature'),
 })
 
 export async function POST(request: Request, { params }: Params) {
@@ -42,7 +41,6 @@ export async function POST(request: Request, { params }: Params) {
     const script = await createScript(supabase, user.id, {
       projectId,
       title: input.title,
-      format: input.format,
       initialBlocks: [],
     })
 

@@ -101,13 +101,6 @@ function ProjectCard({ project }: { project: Project }) {
 // ── Recent scripts table ───────────────────────────────────────────────────────
 
 function ScriptRow({ script }: { script: ScriptListItem }) {
-  const formatLabel: Record<string, string> = {
-    feature: 'Feature',
-    pilot: 'Pilot',
-    spec: 'Spec',
-    short: 'Short',
-  }
-
   return (
     <tr className="group border-b border-stone-100 last:border-0 hover:bg-stone-50 transition-colors">
       <td className="py-3 pl-4">
@@ -123,11 +116,6 @@ function ScriptRow({ script }: { script: ScriptListItem }) {
             {script.title}
           </span>
         </Link>
-      </td>
-      <td className="py-3 px-3">
-        <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-stone-100 text-stone-600">
-          {formatLabel[script.format] ?? script.format}
-        </span>
       </td>
       <td className="py-3 px-3 text-xs text-gray-400">{timeAgo(script.updatedAt)}</td>
     </tr>
@@ -187,9 +175,6 @@ export default async function DashboardPage() {
                 <tr className="border-b border-stone-100">
                   <th className="text-left text-[10px] font-semibold uppercase tracking-wider text-gray-400 py-2 pl-4">
                     Title
-                  </th>
-                  <th className="text-left text-[10px] font-semibold uppercase tracking-wider text-gray-400 py-2 px-3">
-                    Format
                   </th>
                   <th className="text-left text-[10px] font-semibold uppercase tracking-wider text-gray-400 py-2 px-3">
                     Modified

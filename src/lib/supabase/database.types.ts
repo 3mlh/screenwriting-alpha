@@ -18,7 +18,6 @@ export type Json =
 
 export type PermissionLevel = 'owner' | 'editor' | 'viewer'
 
-type ScriptFormat = 'feature' | 'pilot' | 'spec' | 'short'
 type SnapshotTrigger = 'manual' | 'autosave' | 'revision_open' | 'revision_close'
 
 export interface Database {
@@ -118,7 +117,6 @@ export interface Database {
           id: string
           project_id: string
           title: string
-          format: ScriptFormat
           blocks: Json
           created_by: string
           created_at: string
@@ -128,7 +126,6 @@ export interface Database {
           id?: string
           project_id: string
           title: string
-          format?: ScriptFormat
           blocks?: Json
           created_by: string
           created_at?: string
@@ -136,7 +133,6 @@ export interface Database {
         }
         Update: {
           title?: string
-          format?: ScriptFormat
           blocks?: Json
           updated_at?: string
         }

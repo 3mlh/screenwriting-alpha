@@ -13,6 +13,7 @@ import { $getRoot, $getSelection, $isRangeSelection } from 'lexical'
 
 import { SCREENPLAY_NODES } from './ScreenplayNodes'
 import { BlockTypePlugin } from './BlockTypePlugin'
+import { AutoBlockTypePlugin } from './AutoBlockTypePlugin'
 import { BlockTypeSelectorPlugin } from './BlockTypeSelectorPlugin'
 import { AutosavePlugin } from './AutosavePlugin'
 import { lexicalToBlocks } from './serialization/lexicalToBlocks'
@@ -79,6 +80,47 @@ function ActiveScenePlugin(): null {
       })
     })
   }, [editor, setActiveSceneId])
+
+  return null
+}
+
+// ─── Focused block tracker ────────────────────────────────────────────────────
+//
+// Adds data-focused="true" to the DOM element of the block that currently holds
+// the cursor, and clears it from all others. Ghost text CSS is scoped to
+// [data-focused="true"] so only the active empty block shows a hint.
+
+function FocusedBlockPlugin(): null {
+  const [editor] = useLexicalComposerContext()
+
+  useEffect(() => {
+    return editor.registerUpdateListener(({ editorState }) => {
+      let focusedKey: string | null = null
+      const allKeys: string[] = []
+
+      editorState.read(() => {
+        const selection = $getSelection()
+        if ($isRangeSelection(selection)) {
+          const node = getParentScreenplayBlock(selection.anchor.getNode())
+          if (node) focusedKey = node.getKey()
+        }
+        const root = $getRoot()
+        for (const child of root.getChildren()) {
+          if ($isScreenplayBlockNode(child)) allKeys.push(child.getKey())
+        }
+      })
+
+      for (const key of allKeys) {
+        const dom = editor.getElementByKey(key) as HTMLElement | null
+        if (!dom) continue
+        if (key === focusedKey) {
+          dom.dataset.focused = 'true'
+        } else {
+          delete dom.dataset.focused
+        }
+      }
+    })
+  }, [editor])
 
   return null
 }
@@ -161,7 +203,9 @@ export function ScreenplayEditor({
         <OnChangePlugin onChange={onChange} ignoreSelectionChange />
         <InitialStatePlugin initialBlocks={initialBlocks} />
         {!readOnly && <BlockTypePlugin />}
+        {!readOnly && <AutoBlockTypePlugin />}
         {!readOnly && <ActiveScenePlugin />}
+        <FocusedBlockPlugin />
         {!readOnly && scriptId && <AutosavePlugin scriptId={scriptId} />}
         {process.env.NODE_ENV !== 'production' && <DevToolsPlugin />}
       </LexicalComposer>

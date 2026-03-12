@@ -93,13 +93,10 @@ export interface OutlineNode {
 
 // ─── Script ───────────────────────────────────────────────────────────────────
 
-export type ScriptFormat = 'feature' | 'pilot' | 'spec' | 'short'
-
 export interface Script {
   id: string
   projectId: string
   title: string
-  format: ScriptFormat
   blocks: Block[]
   lockedAt?: string
   lockedByUserId?: string

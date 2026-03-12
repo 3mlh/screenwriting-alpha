@@ -4,8 +4,6 @@ import { useState, useTransition, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Dialog } from '@/components/ui/Dialog'
 
-type Format = 'feature' | 'pilot' | 'spec' | 'short'
-
 export function NewScriptModal({
   projectId,
   open,
@@ -17,7 +15,6 @@ export function NewScriptModal({
 }) {
   const router = useRouter()
   const [title, setTitle] = useState('')
-  const [format, setFormat] = useState<Format>('feature')
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const titleRef = useRef<HTMLInputElement>(null)
@@ -25,7 +22,6 @@ export function NewScriptModal({
   useEffect(() => {
     if (open) {
       setTitle('')
-      setFormat('feature')
       setError(null)
       setTimeout(() => titleRef.current?.focus(), 60)
     }
@@ -44,7 +40,7 @@ export function NewScriptModal({
       const res = await fetch(`/api/projects/${projectId}/scripts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: title.trim(), format }),
+        body: JSON.stringify({ title: title.trim() }),
       })
 
       if (!res.ok) {
@@ -91,20 +87,7 @@ export function NewScriptModal({
               className="w-full text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
             />
           </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1.5">Format</label>
-            <select
-              value={format}
-              onChange={(e) => setFormat(e.target.value as Format)}
-              className="w-full text-sm px-3 py-2 border border-gray-200 rounded-lg bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-amber-400"
-            >
-              <option value="feature">Feature</option>
-              <option value="pilot">Pilot</option>
-              <option value="spec">Spec</option>
-              <option value="short">Short</option>
-            </select>
-          </div>
-          {error && <p className="text-xs text-red-500">{error}</p>}
+{error && <p className="text-xs text-red-500">{error}</p>}
           <div className="flex gap-2 pt-1">
             <button
               type="submit"

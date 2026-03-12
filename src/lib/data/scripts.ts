@@ -27,7 +27,6 @@ function toScript(row: ScriptRow): Script {
     id: row.id,
     projectId: row.project_id,
     title: row.title,
-    format: row.format as Script['format'],
     blocks,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -41,19 +40,17 @@ export interface ScriptListItem {
   id: string
   projectId: string
   title: string
-  format: Script['format']
   createdAt: string
   updatedAt: string
 }
 
-type ScriptListRow = Pick<ScriptRow, 'id' | 'project_id' | 'title' | 'format' | 'created_at' | 'updated_at'>
+type ScriptListRow = Pick<ScriptRow, 'id' | 'project_id' | 'title' | 'created_at' | 'updated_at'>
 
 function toScriptListItem(row: ScriptListRow): ScriptListItem {
   return {
     id: row.id,
     projectId: row.project_id,
     title: row.title,
-    format: row.format as Script['format'],
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }
@@ -67,7 +64,7 @@ export async function listScripts(
 ): Promise<ScriptListItem[]> {
   const { data, error } = await supabase
     .from('scripts')
-    .select('id, project_id, title, format, created_at, updated_at')
+    .select('id, project_id, title, created_at, updated_at')
     .eq('project_id', projectId)
     .order('updated_at', { ascending: false })
 
@@ -115,7 +112,6 @@ export async function createScript(
   input: {
     projectId: string
     title: string
-    format?: Script['format']
     initialBlocks?: Block[]
   }
 ): Promise<Script> {
@@ -124,7 +120,6 @@ export async function createScript(
     .insert({
       project_id: input.projectId,
       title: input.title.trim(),
-      format: input.format ?? 'feature',
       blocks: (input.initialBlocks ?? []) as unknown as Database['public']['Tables']['scripts']['Insert']['blocks'],
       created_by: userId,
     } as Database['public']['Tables']['scripts']['Insert'])
@@ -138,13 +133,12 @@ export async function createScript(
 export async function updateScriptMeta(
   supabase: AppSupabaseClient,
   scriptId: string,
-  update: { title?: string; format?: Script['format'] }
+  update: { title?: string }
 ): Promise<Script | null> {
   const { data, error } = await supabase
     .from('scripts')
     .update({
       ...(update.title !== undefined && { title: update.title.trim() }),
-      ...(update.format !== undefined && { format: update.format }),
     } as Database['public']['Tables']['scripts']['Update'])
     .eq('id', scriptId)
     .select()
@@ -177,7 +171,7 @@ export async function listAllScripts(
 ): Promise<ScriptListItem[]> {
   const { data, error } = await supabase
     .from('scripts')
-    .select('id, project_id, title, format, created_at, updated_at')
+    .select('id, project_id, title, created_at, updated_at')
     .order('updated_at', { ascending: false })
     .limit(limit)
 
