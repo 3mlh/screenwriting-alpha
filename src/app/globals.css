@@ -1,0 +1,242 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Courier Prime font ──────────────────────────────────────────────────── */
+
+@import url('https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400;1,700&display=swap');
+
+/* ─── CSS custom properties ───────────────────────────────────────────────── */
+
+:root {
+  --sp-font: 'Courier Prime', 'Courier New', Courier, monospace;
+  --sp-font-size: 12pt;
+  --sp-page-bg: #ffffff;
+  --sp-page-shadow: 0 1px 8px rgba(0, 0, 0, 0.10);
+  --sp-page-width: 60ch;
+  --sp-text: #1a1a1a;
+}
+
+/* ─── Editor shell ────────────────────────────────────────────────────────── */
+
+.screenplay-editor-shell {
+  min-height: 100vh;
+  background: #e8e8e8;
+}
+
+/* ─── Block type selector bar ─────────────────────────────────────────────── */
+
+.block-type-selector-bar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1.5rem;
+  background: #ffffff;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.block-type-selector-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #9ca3af;
+  user-select: none;
+}
+
+.block-type-selector-select {
+  font-family: var(--sp-font);
+  font-size: 0.8rem;
+  color: #374151;
+  background: #f9fafb;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  padding: 0.25rem 0.5rem;
+  cursor: pointer;
+  outline: none;
+  min-width: 9rem;
+  appearance: auto;
+}
+
+.block-type-selector-select:hover:not(:disabled) {
+  border-color: #9ca3af;
+}
+
+.block-type-selector-select:focus {
+  border-color: #6b7280;
+  box-shadow: 0 0 0 2px rgba(107, 114, 128, 0.15);
+}
+
+.block-type-selector-select:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* ─── Page container ──────────────────────────────────────────────────────── */
+
+.screenplay-page-container {
+  display: flex;
+  justify-content: center;
+  padding: 3rem 2rem;
+}
+
+.screenplay-page {
+  background: var(--sp-page-bg);
+  box-shadow: var(--sp-page-shadow);
+  width: var(--sp-page-width);
+  min-height: 88ch;
+  /* Left/right: screenplay standard margins (~1.5in left, 1in right at 12pt) */
+  padding: 4ch;
+  font-family: var(--sp-font);
+  font-size: var(--sp-font-size);
+  line-height: 1;
+  position: relative;
+}
+
+.screenplay-content-editable {
+  outline: none;
+  caret-color: #1a1a1a;
+}
+
+.screenplay-placeholder {
+  position: absolute;
+  top: 4ch;
+  left: 4ch;
+  right: 4ch;
+  font-family: var(--sp-font);
+  font-size: var(--sp-font-size);
+  color: #c0c0c0;
+  pointer-events: none;
+  text-transform: uppercase;
+}
+
+/* ─── Block base ──────────────────────────────────────────────────────────── */
+
+.sp-block {
+  font-family: var(--sp-font);
+  font-size: var(--sp-font-size);
+  line-height: 1;
+  margin: 0;
+  padding: 0;
+  min-height: 1em;
+  color: var(--sp-text);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ─── Scene Heading ───────────────────────────────────────────────────────── */
+
+.sp-scene-heading {
+  text-transform: uppercase;
+  font-weight: bold;
+  margin-top: 1em;
+}
+
+/* ─── Action ──────────────────────────────────────────────────────────────── */
+
+.sp-action {
+  margin-top: 0.5em;
+}
+
+/* ─── Character ───────────────────────────────────────────────────────────── */
+
+.sp-character {
+  text-transform: uppercase;
+  margin-top: 1em;
+  margin-left: 19ch;
+}
+
+/* ─── Dialogue ────────────────────────────────────────────────────────────── */
+
+.sp-dialogue {
+  margin-top: 0;
+  margin-left: 8ch;
+  margin-right: 8ch;
+}
+
+/* ─── Parenthetical ───────────────────────────────────────────────────────── */
+
+.sp-parenthetical {
+  margin-top: 0;
+  margin-left: 12ch;
+  margin-right: 12ch;
+  font-style: italic;
+}
+
+/* ─── Transition ──────────────────────────────────────────────────────────── */
+
+.sp-transition {
+  text-transform: uppercase;
+  text-align: right;
+  margin-top: 1em;
+}
+
+/* ─── Shot ────────────────────────────────────────────────────────────────── */
+
+.sp-shot {
+  text-transform: uppercase;
+  margin-top: 0.5em;
+}
+
+/* ─── Section markers ─────────────────────────────────────────────────────── */
+
+.sp-section {
+  margin-top: 1.5em;
+  margin-bottom: 0.25em;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 0.9em;
+}
+
+.sp-section--act_end {
+  text-align: right;
+}
+
+/* ─── Summary ─────────────────────────────────────────────────────────────── */
+
+.sp-summary {
+  border-left: 3px solid #e5e7eb;
+  padding-left: 1ch;
+  margin-top: 0.5em;
+  font-style: italic;
+  color: #555;
+}
+
+/* ─── Cold Open Marker ────────────────────────────────────────────────────── */
+
+.sp-cold-open-marker {
+  text-align: center;
+  text-transform: uppercase;
+  font-weight: bold;
+  letter-spacing: 0.15em;
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+}
+
+/* ─── Selection ───────────────────────────────────────────────────────────── */
+
+.screenplay-content-editable ::selection {
+  background: rgba(59, 130, 246, 0.18);
+}
+
+/* ─── Status bar ──────────────────────────────────────────────────────────── */
+
+.sp-status-bar {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 1rem;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(4px);
+  border-top: 1px solid #e5e7eb;
+  font-size: 0.7rem;
+  font-family: var(--sp-font);
+  color: #9ca3af;
+  z-index: 10;
+}
