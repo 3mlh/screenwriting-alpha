@@ -26,6 +26,10 @@ interface ScriptState {
 
   // The scene heading block id of the scene the cursor is currently in.
   activeSceneId: string | null
+
+  // Blocks received from a real-time peer update. When set, the
+  // RealtimeBlockLoaderPlugin inside Lexical loads them and clears this field.
+  pendingExternalBlocks: Block[] | null
 }
 
 // ─── Actions ──────────────────────────────────────────────────────────────────
@@ -37,6 +41,7 @@ interface ScriptActions {
   setAutosaveStatus: (status: AutosaveStatus) => void
   setFocusedBlockType: (type: string | null) => void
   setActiveSceneId: (id: string | null) => void
+  setPendingExternalBlocks: (blocks: Block[] | null) => void
   reset: () => void
 }
 
@@ -49,6 +54,7 @@ const initialState: ScriptState = {
   autosaveStatus: 'idle',
   focusedBlockType: null,
   activeSceneId: null,
+  pendingExternalBlocks: null,
 }
 
 // ─── Store ────────────────────────────────────────────────────────────────────
@@ -85,6 +91,11 @@ export const useScriptStore = create<ScriptState & ScriptActions>()(
     setActiveSceneId: (id) =>
       set((state) => {
         state.activeSceneId = id
+      }),
+
+    setPendingExternalBlocks: (blocks) =>
+      set((state) => {
+        state.pendingExternalBlocks = blocks
       }),
 
     reset: () =>

@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { Dialog } from '@/components/ui/Dialog'
 
 type Step = 'choose' | 'project' | 'script'
-type Format = 'feature' | 'pilot' | 'spec' | 'short'
 
 interface ProjectOption {
   id: string
@@ -17,7 +16,6 @@ export function CreateModal({ open, onClose }: { open: boolean; onClose: () => v
   const [step, setStep] = useState<Step>('choose')
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [format, setFormat] = useState<Format>('feature')
   const [projectId, setProjectId] = useState('')
   const [projects, setProjects] = useState<ProjectOption[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -46,7 +44,6 @@ export function CreateModal({ open, onClose }: { open: boolean; onClose: () => v
     setStep('choose')
     setTitle('')
     setDescription('')
-    setFormat('feature')
     setProjectId('')
     setError(null)
   }
@@ -93,7 +90,7 @@ export function CreateModal({ open, onClose }: { open: boolean; onClose: () => v
       const res = await fetch(`/api/projects/${projectId}/scripts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: title.trim(), format }),
+        body: JSON.stringify({ title: title.trim() }),
       })
 
       if (!res.ok) {
@@ -249,20 +246,7 @@ export function CreateModal({ open, onClose }: { open: boolean; onClose: () => v
                 className="w-full text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1.5">Format</label>
-                <select
-                  value={format}
-                  onChange={(e) => setFormat(e.target.value as Format)}
-                  className="w-full text-sm px-3 py-2 border border-gray-200 rounded-lg bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-amber-400"
-                >
-                  <option value="feature">Feature</option>
-                  <option value="pilot">Pilot</option>
-                  <option value="spec">Spec</option>
-                  <option value="short">Short</option>
-                </select>
-              </div>
+            <div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1.5">
                   Project <span className="text-red-400">*</span>

@@ -16,6 +16,7 @@ import { BlockTypePlugin } from './BlockTypePlugin'
 import { AutoBlockTypePlugin } from './AutoBlockTypePlugin'
 import { BlockTypeSelectorPlugin } from './BlockTypeSelectorPlugin'
 import { AutosavePlugin } from './AutosavePlugin'
+import { CollaborationPlugin } from './CollaborationPlugin'
 import { lexicalToBlocks } from './serialization/lexicalToBlocks'
 import { $loadBlocksIntoEditor } from './serialization/blocksToLexical'
 import { $createSceneHeadingNode } from './nodes/SceneHeadingNode'
@@ -24,6 +25,7 @@ import { DevToolsPlugin } from './DevToolsPlugin'
 import { getParentScreenplayBlock } from './blockTypeUtils'
 import { $isScreenplayBlockNode } from './nodes/ScreenplayBlockNode'
 import type { Block } from '@/types/screenplay'
+import type { PresenceUser } from '@/hooks/usePresence'
 
 // ─── Initial state plugin ─────────────────────────────────────────────────────
 
@@ -45,6 +47,34 @@ function InitialStatePlugin({ initialBlocks }: { initialBlocks?: Block[] }): nul
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  return null
+}
+
+// ─── Realtime block loader ────────────────────────────────────────────────────
+//
+// Watches the store for blocks pushed by a peer's save. When detected, loads
+// them into the editor and resets the dirty flag.
+
+function RealtimeBlockLoaderPlugin(): null {
+  const [editor] = useLexicalComposerContext()
+  const pendingExternalBlocks = useScriptStore((s) => s.pendingExternalBlocks)
+  const setPendingExternalBlocks = useScriptStore((s) => s.setPendingExternalBlocks)
+  const setEditorDirty = useScriptStore((s) => s.setEditorDirty)
+
+  useEffect(() => {
+    if (!pendingExternalBlocks) return
+    const blocks = pendingExternalBlocks
+    // Clear immediately so this effect doesn't re-run
+    setPendingExternalBlocks(null)
+    // Load into editor synchronously so onChange fires inside the same microtask
+    editor.update(
+      () => { $loadBlocksIntoEditor(blocks) },
+      { discrete: true }
+    )
+    // Reset dirty: this runs after the discrete update (and its onChange) complete
+    setEditorDirty(false)
+  }, [editor, pendingExternalBlocks, setPendingExternalBlocks, setEditorDirty])
 
   return null
 }
@@ -127,12 +157,20 @@ function FocusedBlockPlugin(): null {
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
+export interface CollaborationProps {
+  presences: PresenceUser[]
+  currentUserId: string
+  onCursorChange: (cursor: { blockId: string; offset: number } | null) => void
+}
+
 export interface ScreenplayEditorProps {
   initialBlocks?: Block[]
   readOnly?: boolean
   // When provided, AutosavePlugin is mounted and saves blocks to this script ID.
   // Omit for the M1 demo editor (no backend).
   scriptId?: string
+  // When provided, enables real-time cursor tracking and presence indicators.
+  collaboration?: CollaborationProps
 }
 
 // ─── Editor ───────────────────────────────────────────────────────────────────
@@ -141,6 +179,7 @@ export function ScreenplayEditor({
   initialBlocks,
   readOnly = false,
   scriptId,
+  collaboration,
 }: ScreenplayEditorProps): React.ReactElement {
   const setBlocks = useScriptStore((s) => s.setBlocks)
   const setEditorDirty = useScriptStore((s) => s.setEditorDirty)
@@ -207,6 +246,14 @@ export function ScreenplayEditor({
         {!readOnly && <ActiveScenePlugin />}
         <FocusedBlockPlugin />
         {!readOnly && scriptId && <AutosavePlugin scriptId={scriptId} />}
+        {!readOnly && collaboration && (
+          <CollaborationPlugin
+            presences={collaboration.presences}
+            currentUserId={collaboration.currentUserId}
+            onCursorChange={collaboration.onCursorChange}
+          />
+        )}
+        {!readOnly && <RealtimeBlockLoaderPlugin />}
         {process.env.NODE_ENV !== 'production' && <DevToolsPlugin />}
       </LexicalComposer>
     </div>

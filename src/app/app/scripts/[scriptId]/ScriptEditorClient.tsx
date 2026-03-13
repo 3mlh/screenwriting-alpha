@@ -1,27 +1,40 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { ScreenplayEditor } from '@/components/editor/ScreenplayEditor'
 import { OutlinePanel } from '@/components/outline/OutlinePanel'
 import { SaveIndicator } from '@/components/ui/SaveIndicator'
 import { ShareDialog } from '@/components/ui/ShareDialog'
+import { PresenceAvatars } from '@/components/ui/PresenceAvatars'
 import { useScriptStore } from '@/stores/scriptStore'
-import type { Script, PermissionLevel } from '@/types/screenplay'
+import { usePresence } from '@/hooks/usePresence'
+import { getSupabaseBrowserClient } from '@/lib/supabase/client'
+import type { Script, PermissionLevel, Block } from '@/types/screenplay'
 
 interface Props {
   script: Script
   userId: string
+  displayName: string
   readOnly?: boolean
   currentUserRole?: PermissionLevel
 }
 
-export function ScriptEditorClient({ script, userId, readOnly = false, currentUserRole = 'viewer' }: Props) {
+export function ScriptEditorClient({
+  script,
+  userId,
+  displayName,
+  readOnly = false,
+  currentUserRole = 'viewer',
+}: Props) {
   const isDirty = useScriptStore((s) => s.isDirty)
   const autosaveStatus = useScriptStore((s) => s.autosaveStatus)
   const setScript = useScriptStore((s) => s.setScript)
+  const setPendingExternalBlocks = useScriptStore((s) => s.setPendingExternalBlocks)
+
   const [outlineOpen, setOutlineOpen] = useState(true)
   const [shareOpen, setShareOpen] = useState(false)
+  const [staleData, setStaleData] = useState(false)
 
   // Register the script in the store so AutosavePlugin can read the scriptId
   useEffect(() => {
@@ -29,8 +42,69 @@ export function ScriptEditorClient({ script, userId, readOnly = false, currentUs
     return () => setScript(null)
   }, [script, setScript])
 
+  // Presence + cursor tracking
+  const { presences, broadcastCursor } = usePresence(script.id, {
+    userId,
+    displayName,
+  })
+
+  // Stable cursor change handler to pass into the editor
+  const handleCursorChange = useCallback(
+    (cursor: { blockId: string; offset: number } | null) => {
+      broadcastCursor(cursor)
+    },
+    [broadcastCursor]
+  )
+
+  // Real-time block updates from other users
+  useEffect(() => {
+    if (readOnly) return
+    const supabase = getSupabaseBrowserClient()
+    const channel = supabase
+      .channel(`blocks:script:${script.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'scripts',
+          filter: `id=eq.${script.id}`,
+        },
+        (payload) => {
+          // Only load if it was someone else's save
+          const updatedBy = (payload.new as { updated_by?: string }).updated_by
+          if (updatedBy === userId) return
+          const blocks = (payload.new as { blocks?: Block[] }).blocks
+          if (Array.isArray(blocks)) {
+            setPendingExternalBlocks(blocks)
+            setStaleData(false) // We just got the fresh data
+          } else {
+            setStaleData(true)
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      channel.unsubscribe()
+    }
+  }, [script.id, userId, readOnly, setPendingExternalBlocks])
+
   return (
     <div className="editor-root">
+      {/* ── Stale data banner ────────────────────────────────────────────────── */}
+      {staleData && (
+        <div className="flex items-center justify-between gap-3 px-4 py-2 bg-amber-50 border-b border-amber-200 text-sm text-amber-800">
+          <span>This script was updated by another user.</span>
+          <button
+            onClick={() => window.location.reload()}
+            className="font-medium underline underline-offset-2 hover:text-amber-900"
+          >
+            Reload to see latest changes
+          </button>
+        </div>
+      )}
+
       {/* ── Top toolbar ────────────────────────────────────────────────────── */}
       <header className="editor-toolbar">
         <div className="flex items-center gap-3">
@@ -66,6 +140,9 @@ export function ScriptEditorClient({ script, userId, readOnly = false, currentUs
         </div>
 
         <div className="flex items-center gap-3 text-xs text-gray-400">
+          {/* Presence avatars */}
+          <PresenceAvatars presences={presences} currentUserId={userId} />
+
           <button
             onClick={() => setShareOpen(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-900 border border-stone-200 rounded-lg hover:bg-stone-50 transition-colors"
@@ -122,6 +199,15 @@ export function ScriptEditorClient({ script, userId, readOnly = false, currentUs
             initialBlocks={script.blocks}
             scriptId={readOnly ? undefined : script.id}
             readOnly={readOnly}
+            collaboration={
+              readOnly
+                ? undefined
+                : {
+                    presences,
+                    currentUserId: userId,
+                    onCursorChange: handleCursorChange,
+                  }
+            }
           />
         </main>
       </div>
