@@ -32,6 +32,10 @@ export class SectionNode extends ScreenplayBlockNode {
     return node
   }
 
+  exportJSON(): SerializedScreenplayBlockNode {
+    return super.exportJSON()
+  }
+
   getCSSClass(): string {
     const meta = this.__blockMetadata as { section_type?: SectionType } | undefined
     const sectionType = meta?.section_type ?? 'act_start'

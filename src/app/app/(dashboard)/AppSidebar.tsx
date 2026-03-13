@@ -23,17 +23,6 @@ function FolderIcon() {
   )
 }
 
-function DocIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-      <polyline points="14 2 14 8 20 8" />
-      <line x1="16" y1="13" x2="8" y2="13" />
-      <line x1="16" y1="17" x2="8" y2="17" />
-    </svg>
-  )
-}
-
 function UsersIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -45,35 +34,15 @@ function UsersIcon() {
   )
 }
 
-function TrashIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-      <polyline points="3 6 5 6 21 6" />
-      <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
-      <path d="M10 11v6M14 11v6" />
-      <path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2" />
-    </svg>
-  )
-}
-
 
 interface NavItemProps {
   href: string
   icon: React.ReactNode
   label: string
   active?: boolean
-  disabled?: boolean
 }
 
-function NavItem({ href, icon, label, active, disabled }: NavItemProps) {
-  if (disabled) {
-    return (
-      <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-gray-400 cursor-not-allowed select-none">
-        <span className="flex-shrink-0 opacity-60">{icon}</span>
-        <span className="text-sm">{label}</span>
-      </div>
-    )
-  }
+function NavItem({ href, icon, label, active }: NavItemProps) {
   return (
     <Link
       href={href}
@@ -105,6 +74,8 @@ export function AppSidebar({ userEmail, displayName }: { userEmail: string; disp
   }
 
   const isHome = pathname === '/app'
+  const isAllProjects = pathname.startsWith('/app/projects')
+  const isShared = pathname === '/app/shared'
 
   const label = displayName || userEmail
   const initials = label ? label[0].toUpperCase() : '?'
@@ -138,20 +109,18 @@ export function AppSidebar({ userEmail, displayName }: { userEmail: string; disp
 
         {/* Nav */}
         <nav className="px-3 flex-1 overflow-y-auto space-y-0.5">
-          <NavItem href="/app" icon={<HomeIcon />} label="Home" active={isHome} />
+          <NavItem href="/app" icon={<HomeIcon />} label="Recents" active={isHome} />
 
           <div className="pt-4 pb-1 px-3">
             <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Library</span>
           </div>
-          <NavItem href="/app" icon={<FolderIcon />} label="All Projects" active={!isHome && pathname.startsWith('/app/projects')} />
-          <NavItem href="/app" icon={<DocIcon />} label="Scripts" disabled />
-          <NavItem href="/app" icon={<UsersIcon />} label="Shared" disabled />
-          <NavItem href="/app" icon={<TrashIcon />} label="Trash" disabled />
+          <NavItem href="/app/projects" icon={<FolderIcon />} label="All Projects" active={isAllProjects} />
+          <NavItem href="/app/shared" icon={<UsersIcon />} label="Shared" active={isShared} />
         </nav>
 
         {/* Footer — user */}
         <div className="px-4 py-4 border-t border-stone-200">
-          <Link href="/app/settings" className="flex items-center gap-2.5 rounded-lg hover:bg-stone-200 -mx-1 px-1 py-1 transition-colors group">
+          <Link href="/app/settings" className={`flex items-center gap-2.5 rounded-lg -mx-1 px-1 py-1 transition-colors group ${pathname === '/app/settings' ? 'bg-amber-100' : 'hover:bg-stone-200'}`}>
             <div className="w-7 h-7 rounded-full bg-gray-700 flex items-center justify-center flex-shrink-0">
               <span className="text-white text-xs font-medium">{initials}</span>
             </div>

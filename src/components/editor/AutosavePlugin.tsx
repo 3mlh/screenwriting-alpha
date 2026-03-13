@@ -32,6 +32,7 @@ export function AutosavePlugin({ scriptId }: { scriptId: string }): null {
 
   const setAutosaveStatus = useScriptStore((s) => s.setAutosaveStatus)
   const setEditorDirty = useScriptStore((s) => s.setEditorDirty)
+  const setLastOwnSavedAt = useScriptStore((s) => s.setLastOwnSavedAt)
 
   // Keep a live ref to the latest blocks without re-subscribing
   useEffect(() => {
@@ -63,6 +64,8 @@ export function AutosavePlugin({ scriptId }: { scriptId: string }): null {
         return
       }
 
+      const data = await res.json().catch(() => ({}))
+      setLastOwnSavedAt((data as { savedAt?: string }).savedAt ?? null)
       setEditorDirty(false)
       setAutosaveStatus('saved')
     } catch (err) {

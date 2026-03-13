@@ -14,7 +14,10 @@ import type { Project } from '@/types/screenplay'
 type AppSupabaseClient = SupabaseClient<Database>
 type ProjectRow = Database['public']['Tables']['projects']['Row']
 
-type ProjectWithCount = ProjectRow & { project_members?: { count: number }[] }
+type ProjectWithCount = ProjectRow & {
+  project_members?: { count: number }[]
+  scripts?: { count: number }[]
+}
 
 function toProject(row: ProjectWithCount): Project {
   return {
@@ -25,6 +28,7 @@ function toProject(row: ProjectWithCount): Project {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     memberCount: row.project_members?.[0]?.count ?? 1,
+    scriptCount: row.scripts?.[0]?.count ?? 0,
   }
 }
 
@@ -33,7 +37,7 @@ function toProject(row: ProjectWithCount): Project {
 export async function listProjects(supabase: AppSupabaseClient): Promise<Project[]> {
   const { data, error } = await supabase
     .from('projects')
-    .select('*, project_members(count)')
+    .select('*, project_members(count), scripts(count)')
     .order('updated_at', { ascending: false })
 
   if (error) throw error
@@ -46,7 +50,7 @@ export async function getProject(
 ): Promise<Project | null> {
   const { data, error } = await supabase
     .from('projects')
-    .select('*, project_members(count)')
+    .select('*, project_members(count), scripts(count)')
     .eq('id', projectId)
     .single()
 
@@ -92,6 +96,20 @@ export async function updateProject(
 
   if (error || !data) return null
   return toProject(data as unknown as ProjectRow)
+}
+
+export async function listSharedProjects(
+  supabase: AppSupabaseClient,
+  userId: string
+): Promise<Project[]> {
+  const { data, error } = await supabase
+    .from('projects')
+    .select('*, project_members(count), scripts(count)')
+    .neq('created_by', userId)
+    .order('updated_at', { ascending: false })
+
+  if (error) throw error
+  return ((data ?? []) as unknown as ProjectWithCount[]).map(toProject)
 }
 
 export async function deleteProject(

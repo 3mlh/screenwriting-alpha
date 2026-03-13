@@ -9,9 +9,10 @@ import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin'
 import LexicalErrorBoundary from '@lexical/react/LexicalErrorBoundary'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import type { EditorState, LexicalNode } from 'lexical'
-import { $getRoot, $getSelection, $isRangeSelection } from 'lexical'
+import { COMMAND_PRIORITY_HIGH, PASTE_COMMAND, $createTextNode, $getRoot, $getSelection, $isRangeSelection } from 'lexical'
 
 import { SCREENPLAY_NODES } from './ScreenplayNodes'
+import { $createActionNode } from './nodes/ActionNode'
 import { BlockTypePlugin } from './BlockTypePlugin'
 import { AutoBlockTypePlugin } from './AutoBlockTypePlugin'
 import { BlockTypeSelectorPlugin } from './BlockTypeSelectorPlugin'
@@ -26,6 +27,66 @@ import { getParentScreenplayBlock } from './blockTypeUtils'
 import { $isScreenplayBlockNode } from './nodes/ScreenplayBlockNode'
 import type { Block } from '@/types/screenplay'
 import type { PresenceUser } from '@/hooks/usePresence'
+
+// ─── Paste normalizer ─────────────────────────────────────────────────────────
+//
+// Intercepts PASTE_COMMAND before Lexical's default handler. For external
+// content (anything without the Lexical JSON mime type), reads plain text,
+// splits on newlines, and inserts each non-empty line as a new ActionNode.
+// Within-editor copy-paste (application/x-lexical-editor) is passed through
+// so Lexical's importJSON round-trip preserves existing block types.
+
+function PasteNormalizerPlugin(): null {
+  const [editor] = useLexicalComposerContext()
+
+  useEffect(() => {
+    return editor.registerCommand<ClipboardEvent>(
+      PASTE_COMMAND,
+      (event) => {
+        const clipboardData = event.clipboardData
+        if (!clipboardData) return false
+
+        // Pass through within-editor pastes so block types are preserved
+        if (clipboardData.getData('application/x-lexical-editor')) return false
+
+        const text = clipboardData.getData('text/plain')
+        if (!text) return false
+
+        const lines = text.split(/\r?\n/).filter((l) => l.trim())
+        if (lines.length === 0) return false
+
+        editor.update(() => {
+          const selection = $getSelection()
+          if (!$isRangeSelection(selection)) return
+
+          const anchorNode = selection.anchor.getNode()
+          const currentBlock = getParentScreenplayBlock(anchorNode)
+          if (!currentBlock) return
+
+          // Replace current block's content with the first pasted line
+          currentBlock.clear()
+          currentBlock.append($createTextNode(lines[0]))
+
+          // Each remaining line becomes a new ActionNode inserted after the previous
+          let insertAfter = currentBlock as ReturnType<typeof getParentScreenplayBlock>
+          for (const line of lines.slice(1)) {
+            const node = $createActionNode()
+            node.append($createTextNode(line))
+            insertAfter!.insertAfter(node)
+            insertAfter = node
+          }
+
+          insertAfter!.selectEnd()
+        })
+
+        return true // Consume event — skip Lexical's default HTML paste
+      },
+      COMMAND_PRIORITY_HIGH
+    )
+  }, [editor])
+
+  return null
+}
 
 // ─── Initial state plugin ─────────────────────────────────────────────────────
 
@@ -243,6 +304,7 @@ export function ScreenplayEditor({
         <InitialStatePlugin initialBlocks={initialBlocks} />
         {!readOnly && <BlockTypePlugin />}
         {!readOnly && <AutoBlockTypePlugin />}
+        {!readOnly && <PasteNormalizerPlugin />}
         {!readOnly && <ActiveScenePlugin />}
         <FocusedBlockPlugin />
         {!readOnly && scriptId && <AutosavePlugin scriptId={scriptId} />}

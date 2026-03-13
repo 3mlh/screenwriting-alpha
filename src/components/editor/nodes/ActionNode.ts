@@ -32,6 +32,10 @@ export class ActionNode extends ScreenplayBlockNode {
     return node
   }
 
+  exportJSON(): SerializedScreenplayBlockNode {
+    return super.exportJSON()
+  }
+
   getCSSClass(): string {
     return 'sp-action'
   }

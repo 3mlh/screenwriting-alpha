@@ -118,6 +118,7 @@ export interface Project {
   createdAt: string
   updatedAt: string
   memberCount: number
+  scriptCount: number
 }
 
 // ─── Permissions ─────────────────────────────────────────────────────────────

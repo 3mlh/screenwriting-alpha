@@ -45,6 +45,7 @@ function toScript(row: ScriptRowWithCount): Script {
 export interface ScriptListItem {
   id: string
   projectId: string
+  projectTitle?: string
   title: string
   createdAt: string
   updatedAt: string
@@ -53,12 +54,14 @@ export interface ScriptListItem {
 
 type ScriptListRow = Pick<ScriptRow, 'id' | 'project_id' | 'title' | 'created_at' | 'updated_at'> & {
   script_members?: { count: number }[]
+  project?: { title: string } | null
 }
 
 function toScriptListItem(row: ScriptListRow): ScriptListItem {
   return {
     id: row.id,
     projectId: row.project_id,
+    projectTitle: (row.project as { title?: string } | null)?.title,
     title: row.title,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -181,7 +184,7 @@ export async function listAllScripts(
 ): Promise<ScriptListItem[]> {
   const { data, error } = await supabase
     .from('scripts')
-    .select('id, project_id, title, created_at, updated_at, script_members(count)')
+    .select('id, project_id, title, created_at, updated_at, script_members(count), project:projects(title)')
     .order('updated_at', { ascending: false })
     .limit(limit)
 

@@ -56,9 +56,12 @@ export function ScriptEditorClient({
     [broadcastCursor]
   )
 
-  // Real-time block updates from other users
+  // Real-time block updates from other users.
+  // Only subscribe when there are other members — a solo user's own autosaves
+  // would otherwise trigger the reload and wipe in-flight edits.
+  const hasPeers = script.memberCount > 1 || script.projectMemberCount > 1
   useEffect(() => {
-    if (readOnly) return
+    if (readOnly || !hasPeers) return
     const supabase = getSupabaseBrowserClient()
     const channel = supabase
       .channel(`blocks:script:${script.id}`)
@@ -71,9 +74,15 @@ export function ScriptEditorClient({
           filter: `id=eq.${script.id}`,
         },
         (payload) => {
-          // Only load if it was someone else's save
-          const updatedBy = (payload.new as { updated_by?: string }).updated_by
-          if (updatedBy === userId) return
+          // Skip our own saves. Two checks needed because of a race condition:
+          // the Realtime event can arrive either before or after the API response.
+          // 1. 'saving' status: event arrived before response (common — WebSocket is faster than HTTP)
+          // 2. lastOwnSavedAt match: event arrived after response
+          const state = useScriptStore.getState()
+          if (state.autosaveStatus === 'saving') return
+          const incomingAt = (payload.new as { updated_at?: string }).updated_at
+          if (incomingAt && state.lastOwnSavedAt &&
+              new Date(incomingAt).getTime() === new Date(state.lastOwnSavedAt).getTime()) return
           const blocks = (payload.new as { blocks?: Block[] }).blocks
           if (Array.isArray(blocks)) {
             setPendingExternalBlocks(blocks)
@@ -88,7 +97,7 @@ export function ScriptEditorClient({
     return () => {
       channel.unsubscribe()
     }
-  }, [script.id, userId, readOnly, setPendingExternalBlocks])
+  }, [script.id, userId, readOnly, hasPeers, setPendingExternalBlocks])
 
   return (
     <div className="editor-root">
@@ -109,7 +118,7 @@ export function ScriptEditorClient({
       <header className="editor-toolbar">
         <div className="flex items-center gap-3">
           <Link
-            href={`/app/projects/${script.projectId}`}
+            href="/app"
             className="flex items-center gap-2 hover:opacity-80 transition-opacity"
           >
             <div className="w-6 h-6 rounded-md bg-amber-700 flex items-center justify-center flex-shrink-0">

@@ -30,6 +30,10 @@ interface ScriptState {
   // Blocks received from a real-time peer update. When set, the
   // RealtimeBlockLoaderPlugin inside Lexical loads them and clears this field.
   pendingExternalBlocks: Block[] | null
+
+  // The updated_at timestamp of the last save we initiated. Used to filter
+  // our own saves out of the realtime subscription so the editor isn't reloaded.
+  lastOwnSavedAt: string | null
 }
 
 // ─── Actions ──────────────────────────────────────────────────────────────────
@@ -42,6 +46,7 @@ interface ScriptActions {
   setFocusedBlockType: (type: string | null) => void
   setActiveSceneId: (id: string | null) => void
   setPendingExternalBlocks: (blocks: Block[] | null) => void
+  setLastOwnSavedAt: (t: string | null) => void
   reset: () => void
 }
 
@@ -55,6 +60,7 @@ const initialState: ScriptState = {
   focusedBlockType: null,
   activeSceneId: null,
   pendingExternalBlocks: null,
+  lastOwnSavedAt: null,
 }
 
 // ─── Store ────────────────────────────────────────────────────────────────────
@@ -96,6 +102,11 @@ export const useScriptStore = create<ScriptState & ScriptActions>()(
     setPendingExternalBlocks: (blocks) =>
       set((state) => {
         state.pendingExternalBlocks = blocks
+      }),
+
+    setLastOwnSavedAt: (t) =>
+      set((state) => {
+        state.lastOwnSavedAt = t
       }),
 
     reset: () =>
