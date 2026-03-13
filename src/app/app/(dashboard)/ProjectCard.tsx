@@ -36,9 +36,9 @@ export function ProjectCard({ project }: { project: Project }) {
   return (
     <Link
       href={`/app/projects/${project.id}`}
-      className="group block bg-white rounded-xl overflow-hidden border border-stone-200 hover:border-stone-300 hover:shadow-md transition-all"
+      className="group block bg-white rounded-xl overflow-hidden border border-stone-200 hover:border-stone-300 hover:shadow-md transition-all dark:bg-stone-900 dark:border-stone-700 dark:hover:border-stone-500"
     >
-      <div className={`h-28 bg-gradient-to-br ${cardGradient(project.id)}`} />
+      <div className={`h-28 bg-gradient-to-br ${cardGradient(project.id)} opacity-90 dark:opacity-40`} />
       <div className="px-4 py-3">
         <div className="flex items-center gap-1.5 min-w-0">
           {project.memberCount > 1 ? (
@@ -51,19 +51,19 @@ export function ProjectCard({ project }: { project: Project }) {
               <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0110 0v4" />
             </svg>
           )}
-          <h3 className="text-sm font-semibold text-gray-900 truncate group-hover:text-amber-800 transition-colors">
+          <h3 className="text-sm font-semibold text-gray-900 truncate group-hover:text-amber-800 transition-colors dark:text-gray-100 dark:group-hover:text-amber-400">
             {project.title}
           </h3>
         </div>
         {project.description ? (
-          <p className="text-xs text-gray-500 mt-0.5 truncate">{project.description}</p>
+          <p className="text-xs text-gray-500 dark:text-stone-400 mt-0.5 truncate">{project.description}</p>
         ) : (
-          <p className="text-xs text-gray-400 mt-0.5">No description</p>
+          <p className="text-xs text-gray-400 dark:text-stone-500 mt-0.5">No description</p>
         )}
         <div className="flex items-center gap-2.5 mt-2">
-          <span className="text-[11px] text-gray-400">{timeAgo(project.updatedAt)}</span>
-          <span className="text-gray-200">·</span>
-          <span className="text-[11px] text-gray-400">
+          <span className="text-[11px] text-gray-400 dark:text-stone-500">{timeAgo(project.updatedAt)}</span>
+          <span className="text-gray-200 dark:text-stone-600">·</span>
+          <span className="text-[11px] text-gray-400 dark:text-stone-500">
             {project.scriptCount} {project.scriptCount === 1 ? 'script' : 'scripts'}
           </span>
         </div>

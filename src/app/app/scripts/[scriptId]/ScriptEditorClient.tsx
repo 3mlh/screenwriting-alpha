@@ -128,9 +128,9 @@ export function ScriptEditorClient({
             <div className="w-6 h-6 rounded-md bg-amber-700 flex items-center justify-center flex-shrink-0">
               <span className="text-white text-xs font-bold">W</span>
             </div>
-            <span className="text-sm font-semibold text-gray-900">Writer&apos;s Room</span>
+            <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">Writer&apos;s Room</span>
           </Link>
-          <span className="text-gray-300">|</span>
+          <span className="text-gray-300 dark:text-gray-600">|</span>
           <span className="flex items-center gap-1.5 min-w-0">
             {(script.memberCount > 1 || script.projectMemberCount > 1) ? (
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="flex-shrink-0 text-amber-600" aria-label="Shared">
@@ -175,7 +175,7 @@ export function ScriptEditorClient({
 
           <button
             onClick={() => setShareOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-900 border border-stone-200 rounded-lg hover:bg-stone-50 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-900 border border-stone-200 rounded-lg hover:bg-stone-50 transition-colors dark:text-gray-300 dark:border-stone-600 dark:hover:bg-stone-700 dark:hover:text-gray-100"
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />

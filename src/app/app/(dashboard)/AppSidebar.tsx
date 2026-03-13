@@ -48,8 +48,8 @@ function NavItem({ href, icon, label, active }: NavItemProps) {
       href={href}
       className={`flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors ${
         active
-          ? 'bg-amber-100 text-amber-900 font-medium'
-          : 'text-gray-600 hover:bg-stone-200 hover:text-gray-900'
+          ? 'bg-amber-100 text-amber-900 font-medium dark:bg-amber-900/30 dark:text-amber-400'
+          : 'text-gray-600 hover:bg-stone-200 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-stone-800 dark:hover:text-gray-100'
       }`}
     >
       <span className="flex-shrink-0">{icon}</span>
@@ -82,14 +82,14 @@ export function AppSidebar({ userEmail, displayName }: { userEmail: string; disp
 
   return (
     <>
-      <aside className="w-60 flex-shrink-0 flex flex-col h-screen bg-stone-100 border-r border-stone-200">
+      <aside className="w-60 flex-shrink-0 flex flex-col h-screen bg-stone-100 border-r border-stone-200 dark:bg-stone-900 dark:border-stone-700">
         {/* Logo */}
         <div className="px-4 pt-5 pb-3">
           <Link href="/app" className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-amber-700 flex items-center justify-center flex-shrink-0">
               <span className="text-white text-sm font-bold">W</span>
             </div>
-            <span className="text-sm font-semibold text-gray-900">Writer&apos;s Room</span>
+            <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">Writer&apos;s Room</span>
           </Link>
         </div>
 
@@ -112,27 +112,27 @@ export function AppSidebar({ userEmail, displayName }: { userEmail: string; disp
           <NavItem href="/app" icon={<HomeIcon />} label="Recents" active={isHome} />
 
           <div className="pt-4 pb-1 px-3">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Library</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-stone-500">Library</span>
           </div>
           <NavItem href="/app/projects" icon={<FolderIcon />} label="All Projects" active={isAllProjects} />
           <NavItem href="/app/shared" icon={<UsersIcon />} label="Shared" active={isShared} />
         </nav>
 
         {/* Footer — user */}
-        <div className="px-4 py-4 border-t border-stone-200">
-          <Link href="/app/settings" className={`flex items-center gap-2.5 rounded-lg -mx-1 px-1 py-1 transition-colors group ${pathname === '/app/settings' ? 'bg-amber-100' : 'hover:bg-stone-200'}`}>
+        <div className="px-4 py-4 border-t border-stone-200 dark:border-stone-700">
+          <Link href="/app/settings" className={`flex items-center gap-2.5 rounded-lg -mx-1 px-1 py-1 transition-colors group ${pathname === '/app/settings' ? 'bg-amber-100 dark:bg-amber-900/30' : 'hover:bg-stone-200 dark:hover:bg-stone-800'}`}>
             <div className="w-7 h-7 rounded-full bg-gray-700 flex items-center justify-center flex-shrink-0">
               <span className="text-white text-xs font-medium">{initials}</span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-gray-800 truncate">{label}</p>
-              {displayName && <p className="text-[10px] text-gray-400 truncate">{userEmail}</p>}
+              <p className="text-xs font-medium text-gray-800 dark:text-gray-200 truncate">{label}</p>
+              {displayName && <p className="text-[10px] text-gray-400 dark:text-stone-500 truncate">{userEmail}</p>}
             </div>
           </Link>
           <button
             onClick={handleSignOut}
             disabled={isPending}
-            className="mt-2 w-full text-left text-xs text-gray-400 hover:text-gray-700 disabled:opacity-50 px-1"
+            className="mt-2 w-full text-left text-xs text-gray-400 hover:text-gray-700 dark:text-stone-500 dark:hover:text-gray-200 disabled:opacity-50 px-1"
           >
             Sign out
           </button>

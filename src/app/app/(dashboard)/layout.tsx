@@ -15,7 +15,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const displayName = profile?.displayName || user.email || ''
 
   return (
-    <div className="flex h-screen overflow-hidden bg-stone-100">
+    <div className="flex h-screen overflow-hidden bg-stone-100 dark:bg-stone-950">
       <AppSidebar userEmail={user.email ?? ''} displayName={displayName} />
       <main className="flex-1 overflow-y-auto">{children}</main>
     </div>
