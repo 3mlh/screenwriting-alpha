@@ -7,6 +7,7 @@ import { OutlinePanel } from '@/components/outline/OutlinePanel'
 import { SaveIndicator } from '@/components/ui/SaveIndicator'
 import { ShareDialog } from '@/components/ui/ShareDialog'
 import { PresenceAvatars } from '@/components/ui/PresenceAvatars'
+import { RevisionPanel } from '@/components/ui/RevisionPanel'
 import { useScriptStore } from '@/stores/scriptStore'
 import { usePresence } from '@/hooks/usePresence'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
@@ -35,6 +36,9 @@ export function ScriptEditorClient({
   const [outlineOpen, setOutlineOpen] = useState(true)
   const [shareOpen, setShareOpen] = useState(false)
   const [staleData, setStaleData] = useState(false)
+  const revisionPanelOpen = useScriptStore((s) => s.revisionPanelOpen)
+  const setRevisionPanelOpen = useScriptStore((s) => s.setRevisionPanelOpen)
+  const activeRevisionSet = useScriptStore((s) => s.activeRevisionSet)
 
   // Register the script in the store so AutosavePlugin can read the scriptId
   useEffect(() => {
@@ -141,6 +145,23 @@ export function ScriptEditorClient({
             <span className="text-sm text-gray-500 truncate max-w-xs">{script.title}</span>
           </span>
 
+          {/* Revision tag — shows active revision name, click opens revision panel */}
+          {activeRevisionSet && (
+            <button
+              onClick={() => { setRevisionPanelOpen(true); setOutlineOpen(false) }}
+              className="flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-stone-200 hover:bg-stone-50 transition-colors flex-shrink-0"
+              title="Open revisions panel"
+            >
+              {activeRevisionSet.color && (
+                <span
+                  className="w-2 h-2 rounded-full flex-shrink-0"
+                  style={{ background: activeRevisionSet.color }}
+                />
+              )}
+              <span className="text-[11px] text-gray-500">{activeRevisionSet.name}</span>
+            </button>
+          )}
+
           {readOnly && (
             <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-stone-100 text-stone-500">
               Read only
@@ -171,7 +192,10 @@ export function ScriptEditorClient({
         <div className="editor-left-rail">
           <button
             className={`editor-rail-btn${outlineOpen ? ' active' : ''}`}
-            onClick={() => setOutlineOpen((o) => !o)}
+            onClick={() => {
+              setOutlineOpen((o) => !o)
+              setRevisionPanelOpen(false)
+            }}
             aria-label={outlineOpen ? 'Hide outline' : 'Show outline'}
             title={outlineOpen ? 'Hide outline' : 'Show outline'}
           >
@@ -182,10 +206,13 @@ export function ScriptEditorClient({
             </svg>
           </button>
           <button
-            className="editor-rail-btn"
-            disabled
-            aria-label="Revisions (coming soon)"
-            title="Revisions (coming soon)"
+            className={`editor-rail-btn${revisionPanelOpen ? ' active' : ''}`}
+            onClick={() => {
+              setRevisionPanelOpen(!revisionPanelOpen)
+              if (!revisionPanelOpen) setOutlineOpen(false)
+            }}
+            aria-label={revisionPanelOpen ? 'Hide revisions' : 'Show revisions'}
+            title={revisionPanelOpen ? 'Hide revisions' : 'Show revisions'}
           >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
               <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
@@ -194,12 +221,25 @@ export function ScriptEditorClient({
           </button>
         </div>
 
-        <aside className={`editor-outline-sidebar${outlineOpen ? '' : ' collapsed'}`}>
+        <aside className={`editor-outline-sidebar${outlineOpen && !revisionPanelOpen ? '' : ' collapsed'}`}>
           <div className="outline-sidebar-header">
             <span className="outline-sidebar-title">Outline</span>
           </div>
           <div className="outline-sidebar-body">
             <OutlinePanel />
+          </div>
+        </aside>
+
+        <aside className={`editor-outline-sidebar${revisionPanelOpen ? '' : ' collapsed'}`}>
+          <div className="outline-sidebar-header">
+            <span className="outline-sidebar-title">Revisions</span>
+          </div>
+          <div className="outline-sidebar-body p-0">
+            <RevisionPanel
+              scriptId={script.id}
+              currentUserRole={currentUserRole}
+              initialRevisionSetId={script.currentRevisionSetId}
+            />
           </div>
         </aside>
 

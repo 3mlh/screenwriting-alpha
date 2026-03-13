@@ -27,11 +27,14 @@ function toScript(row: ScriptRowWithCount): Script {
   const validation = safeValidateBlocks(row.blocks)
   const blocks: Block[] = validation.success ? validation.data : []
 
+  const scriptRow = row as typeof row & { current_revision_set_id?: string | null }
+
   return {
     id: row.id,
     projectId: row.project_id,
     title: row.title,
     blocks,
+    currentRevisionSetId: scriptRow.current_revision_set_id ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     createdByUserId: row.created_by,

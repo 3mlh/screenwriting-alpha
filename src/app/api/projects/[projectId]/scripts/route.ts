@@ -5,6 +5,8 @@ import { NextResponse } from 'next/server'
 import { getSupabaseServerClient } from '@/lib/supabase/server'
 import { requireUser, requireProjectRole } from '@/lib/auth/permissions'
 import { listScripts, createScript } from '@/lib/data/scripts'
+import { createSnapshot } from '@/lib/revisions/snapshot'
+import { createRevisionSet, setCurrentRevisionSet } from '@/lib/data/revisions'
 import { toApiError } from '@/lib/auth/errors'
 import { z } from 'zod'
 
@@ -43,6 +45,24 @@ export async function POST(request: Request, { params }: Params) {
       title: input.title,
       initialBlocks: [],
     })
+
+    // Auto-create "Initial Draft" revision set for every new script
+    const openSnapshot = await createSnapshot(supabase, {
+      scriptId: script.id,
+      userId: user.id,
+      blocks: [],
+      triggerType: 'revision_open',
+      label: 'Initial Draft — opened',
+    })
+    const revisionSet = await createRevisionSet(supabase, {
+      scriptId: script.id,
+      userId: user.id,
+      name: 'Initial Draft',
+      color: '', // no color = no margin marks
+      openSnapshotId: openSnapshot.id,
+    })
+    await setCurrentRevisionSet(supabase, script.id, revisionSet.id)
+    script.currentRevisionSetId = revisionSet.id
 
     return NextResponse.json(script, { status: 201 })
   } catch (err) {

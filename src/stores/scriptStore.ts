@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
-import type { Block, Script } from '@/types/screenplay'
+import type { Block, Script, RevisionSet, BlockDiff } from '@/types/screenplay'
 
 // ─── Autosave status ──────────────────────────────────────────────────────────
 
@@ -34,6 +34,19 @@ interface ScriptState {
   // The updated_at timestamp of the last save we initiated. Used to filter
   // our own saves out of the realtime subscription so the editor isn't reloaded.
   lastOwnSavedAt: string | null
+
+  // ── Revision state ──────────────────────────────────────────────────────────
+
+  // The active revision set, if any. Populated when the script has
+  // current_revision_set_id set. Drives RevisionMarkPlugin margin marks.
+  activeRevisionSet: RevisionSet | null
+
+  // Diffs between the open snapshot and the current state.
+  // Keyed on blockId for O(1) lookup in RevisionMarkPlugin.
+  revisionDiffs: Map<string, BlockDiff>
+
+  // Whether the revision panel is open in the left rail.
+  revisionPanelOpen: boolean
 }
 
 // ─── Actions ──────────────────────────────────────────────────────────────────
@@ -47,6 +60,9 @@ interface ScriptActions {
   setActiveSceneId: (id: string | null) => void
   setPendingExternalBlocks: (blocks: Block[] | null) => void
   setLastOwnSavedAt: (t: string | null) => void
+  setActiveRevisionSet: (rs: RevisionSet | null) => void
+  setRevisionDiffs: (diffs: BlockDiff[]) => void
+  setRevisionPanelOpen: (open: boolean) => void
   reset: () => void
 }
 
@@ -61,6 +77,9 @@ const initialState: ScriptState = {
   activeSceneId: null,
   pendingExternalBlocks: null,
   lastOwnSavedAt: null,
+  activeRevisionSet: null,
+  revisionDiffs: new Map(),
+  revisionPanelOpen: false,
 }
 
 // ─── Store ────────────────────────────────────────────────────────────────────
@@ -109,9 +128,26 @@ export const useScriptStore = create<ScriptState & ScriptActions>()(
         state.lastOwnSavedAt = t
       }),
 
+    setActiveRevisionSet: (rs) =>
+      set((state) => {
+        state.activeRevisionSet = rs
+      }),
+
+    setRevisionDiffs: (diffs) =>
+      set((state) => {
+        const map = new Map<string, BlockDiff>()
+        for (const d of diffs) map.set(d.blockId, d)
+        state.revisionDiffs = map
+      }),
+
+    setRevisionPanelOpen: (open) =>
+      set((state) => {
+        state.revisionPanelOpen = open
+      }),
+
     reset: () =>
       set((state) => {
-        Object.assign(state, initialState)
+        Object.assign(state, { ...initialState, revisionDiffs: new Map() })
       }),
   }))
 )

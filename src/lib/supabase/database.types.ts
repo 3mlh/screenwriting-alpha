@@ -123,6 +123,7 @@ export interface Database {
           created_by: string
           created_at: string
           updated_at: string
+          current_revision_set_id: string | null
         }
         Insert: {
           id?: string
@@ -132,11 +133,13 @@ export interface Database {
           created_by: string
           created_at?: string
           updated_at?: string
+          current_revision_set_id?: string | null
         }
         Update: {
           title?: string
           blocks?: Json
           updated_at?: string
+          current_revision_set_id?: string | null
         }
         Relationships: [
           {
@@ -218,6 +221,60 @@ export interface Database {
             columns: ['script_id']
             isOneToOne: false
             referencedRelation: 'scripts'
+            referencedColumns: ['id']
+          }
+        ]
+      }
+      revision_sets: {
+        Row: {
+          id: string
+          script_id: string
+          name: string
+          color: string
+          opened_at: string
+          closed_at: string | null
+          open_snapshot_id: string
+          close_snapshot_id: string | null
+          created_by: string
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          script_id: string
+          name: string
+          color?: string
+          opened_at?: string
+          closed_at?: string | null
+          open_snapshot_id: string
+          close_snapshot_id?: string | null
+          created_by: string
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          name?: string
+          color?: string
+          closed_at?: string | null
+          close_snapshot_id?: string | null
+          is_active?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'revision_sets_script_id_fkey'
+            columns: ['script_id']
+            isOneToOne: false
+            referencedRelation: 'scripts'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'revision_sets_open_snapshot_id_fkey'
+            columns: ['open_snapshot_id']
+            isOneToOne: false
+            referencedRelation: 'script_snapshots'
             referencedColumns: ['id']
           }
         ]

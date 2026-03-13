@@ -11,6 +11,11 @@
 // context, but it does NOT use Lexical state for the save payload — it reads
 // the canonical Block[] from the Zustand store instead.
 //
+// Autosave snapshot cadence:
+//   Sends lastSnapshotAt (from localStorage) with each save. If the server
+//   creates an autosave snapshot (>30min since last), it returns snapshotId
+//   which we persist to localStorage so the next save has fresh timing.
+//
 // Lifecycle:
 //   - On mount: register Cmd+S keydown listener
 //   - On isDirty: start 2s debounce timer
@@ -22,6 +27,7 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import { useScriptStore } from '@/stores/scriptStore'
 
 const DEBOUNCE_MS = 2000
+const LAST_SNAPSHOT_KEY = (scriptId: string) => `lastSnapshotAt:${scriptId}`
 
 export function AutosavePlugin({ scriptId }: { scriptId: string }): null {
   const [editor] = useLexicalComposerContext()
@@ -51,10 +57,12 @@ export function AutosavePlugin({ scriptId }: { scriptId: string }): null {
     setAutosaveStatus('saving')
 
     try {
+      const lastSnapshotAt = localStorage.getItem(LAST_SNAPSHOT_KEY(scriptId)) ?? null
+
       const res = await fetch(`/api/scripts/${scriptId}/blocks`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ blocks }),
+        body: JSON.stringify({ blocks, lastSnapshotAt }),
       })
 
       if (!res.ok) {
@@ -65,7 +73,15 @@ export function AutosavePlugin({ scriptId }: { scriptId: string }): null {
       }
 
       const data = await res.json().catch(() => ({}))
-      setLastOwnSavedAt((data as { savedAt?: string }).savedAt ?? null)
+      const typed = data as { savedAt?: string; snapshotId?: string }
+      setLastOwnSavedAt(typed.savedAt ?? null)
+
+      // Server created a new autosave snapshot — record the time so we don't
+      // snapshot again for another 30 minutes.
+      if (typed.snapshotId) {
+        localStorage.setItem(LAST_SNAPSHOT_KEY(scriptId), new Date().toISOString())
+      }
+
       setEditorDirty(false)
       setAutosaveStatus('saved')
     } catch (err) {
@@ -74,7 +90,7 @@ export function AutosavePlugin({ scriptId }: { scriptId: string }): null {
     } finally {
       isSavingRef.current = false
     }
-  }, [scriptId, setAutosaveStatus, setEditorDirty])
+  }, [scriptId, setAutosaveStatus, setEditorDirty, setLastOwnSavedAt])
 
   const scheduleDebounce = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current)

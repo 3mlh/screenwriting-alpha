@@ -23,6 +23,8 @@ import { $loadBlocksIntoEditor } from './serialization/blocksToLexical'
 import { $createSceneHeadingNode } from './nodes/SceneHeadingNode'
 import { useScriptStore } from '@/stores/scriptStore'
 import { DevToolsPlugin } from './DevToolsPlugin'
+import { RevisionMarkPlugin } from './RevisionMarkPlugin'
+import { CursorAnchorPlugin } from './CursorAnchorPlugin'
 import { getParentScreenplayBlock } from './blockTypeUtils'
 import { $isScreenplayBlockNode } from './nodes/ScreenplayBlockNode'
 import type { Block } from '@/types/screenplay'
@@ -307,7 +309,9 @@ export function ScreenplayEditor({
         {!readOnly && <PasteNormalizerPlugin />}
         {!readOnly && <ActiveScenePlugin />}
         <FocusedBlockPlugin />
+        <CursorAnchorPlugin />
         {!readOnly && scriptId && <AutosavePlugin scriptId={scriptId} />}
+        <RevisionMarkPlugin />
         {!readOnly && collaboration && (
           <CollaborationPlugin
             presences={collaboration.presences}

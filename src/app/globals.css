@@ -533,3 +533,45 @@
   color: #9ca3af;
   z-index: 10;
 }
+
+/* ─── Revision marks ──────────────────────────────────────────────────────── */
+
+/* Colored left-margin bar on changed blocks */
+.sp-revision-mark {
+  position: relative;
+}
+.sp-revision-mark::before {
+  content: '';
+  position: absolute;
+  left: -1.5rem;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--revision-color, #F59E0B);
+  opacity: 0.85;
+}
+
+/* Inline diff overlay — sits on top of the block text, pointer-events: none */
+.sp-inline-diff-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font: inherit;
+  color: transparent; /* Hide the overlay text; only highlights are visible */
+}
+
+.sp-diff-insert {
+  background: rgba(34, 197, 94, 0.25);  /* green-500 @ 25% */
+  color: transparent;
+  border-radius: 2px;
+}
+
+.sp-diff-delete {
+  background: rgba(239, 68, 68, 0.20);  /* red-500 @ 20% */
+  color: transparent;
+  text-decoration: line-through;
+  border-radius: 2px;
+}

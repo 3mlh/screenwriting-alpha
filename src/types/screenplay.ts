@@ -198,10 +198,18 @@ export interface RevisionSet {
 }
 
 // Derived — never stored
+export interface InlineDiffSegment {
+  op: 'equal' | 'insert' | 'delete'
+  text: string
+}
+
 export interface BlockDiff {
   blockId: string
   changeType: 'added' | 'removed' | 'modified'
   previousText?: string
   currentText?: string
+  // Character-level diff segments for 'modified' blocks.
+  // Lets the UI highlight exactly which characters within the block changed.
+  inlineDiff?: InlineDiffSegment[]
   revisionSetId: string
 }
