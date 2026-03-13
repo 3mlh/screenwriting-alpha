@@ -118,7 +118,7 @@ export function RevisionPanel({ scriptId, currentUserRole, initialRevisionSetId 
       {!readOnly && (
         <section className="p-3 flex flex-col gap-2">
           <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wide">
-            Start a new version
+            Start a new revision
           </p>
           {activeRevisionSet ? (
             <p className="text-[11px] text-gray-400">
@@ -175,7 +175,7 @@ export function RevisionPanel({ scriptId, currentUserRole, initialRevisionSetId 
       {/* ── Past revisions ─────────────────────────────────────────────────── */}
       <section className="p-3 flex flex-col gap-2">
         <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wide">
-          Past revisions
+          Past versions
         </p>
         {pastRevisions.length === 0 ? (
           <p className="text-[11px] text-gray-400">None yet</p>

@@ -96,6 +96,7 @@ export const useScriptStore = create<ScriptState & ScriptActions>()(
     setScript: (script) =>
       set((state) => {
         state.script = script
+        if (script !== null) state.revisionPanelOpen = false
       }),
 
     setEditorDirty: (dirty) =>

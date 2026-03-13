@@ -12,55 +12,68 @@ export function CursorAnchorPlugin(): React.ReactElement | null {
   const [editor] = useLexicalComposerContext()
   const [side, setSide] = useState<Side>(null)
   const focusedKeyRef = useRef<string | null>(null)
+  const containerRef = useRef<HTMLElement | null>(null)
 
+  // Reusable check: compare focused block's rect against the scroll container's rect
+  function checkVisibility() {
+    const key = focusedKeyRef.current
+    if (!key) { setSide(null); return }
+
+    const dom = editor.getElementByKey(key)
+    if (!dom) { setSide(null); return }
+
+    const container = containerRef.current ?? dom.closest('.editor-main') as HTMLElement | null
+    if (!container) { setSide(null); return }
+    containerRef.current = container
+
+    const domRect = dom.getBoundingClientRect()
+    const containerRect = container.getBoundingClientRect()
+
+    if (domRect.bottom < containerRect.top) {
+      setSide('above')
+    } else if (domRect.top > containerRect.bottom) {
+      setSide('below')
+    } else {
+      setSide(null)
+    }
+  }
+
+  // Track focused block key on every editor state change
   useEffect(() => {
     return editor.registerUpdateListener(({ editorState }) => {
-      let key: string | null = null
       editorState.read(() => {
         const selection = $getSelection()
         if ($isRangeSelection(selection)) {
           const block = getParentScreenplayBlock(selection.anchor.getNode())
-          if (block) key = block.getKey()
+          focusedKeyRef.current = block ? block.getKey() : null
+        } else {
+          focusedKeyRef.current = null
         }
       })
-
-      focusedKeyRef.current = key
-      if (!key) {
-        setSide(null)
-        return
-      }
-
-      const dom = editor.getElementByKey(key)
-      if (!dom) {
-        setSide(null)
-        return
-      }
-
-      // Find the scrollable container (.editor-main)
-      const container = dom.closest('.editor-main') as HTMLElement | null
-      if (!container) {
-        setSide(null)
-        return
-      }
-
-      const domRect = dom.getBoundingClientRect()
-      const containerRect = container.getBoundingClientRect()
-
-      if (domRect.bottom < containerRect.top) {
-        setSide('above')
-      } else if (domRect.top > containerRect.bottom) {
-        setSide('below')
-      } else {
-        setSide(null)
-      }
+      checkVisibility()
     })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editor])
+
+  // Also re-check on scroll so the toast appears/disappears as the user scrolls
+  useEffect(() => {
+    // Find the scroll container once the editor mounts
+    const editorRoot = editor.getRootElement()
+    if (!editorRoot) return
+    const container = editorRoot.closest('.editor-main') as HTMLElement | null
+    if (!container) return
+    containerRef.current = container
+
+    const onScroll = () => checkVisibility()
+    container.addEventListener('scroll', onScroll, { passive: true })
+    return () => container.removeEventListener('scroll', onScroll)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor])
 
   function scrollToCursor() {
     const key = focusedKeyRef.current
     if (!key) return
-    const dom = editor.getElementByKey(key)
-    dom?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    editor.getElementByKey(key)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }
 
   if (!side) return null
@@ -68,7 +81,7 @@ export function CursorAnchorPlugin(): React.ReactElement | null {
   return createPortal(
     <button
       onMouseDown={(e) => {
-        e.preventDefault() // don't blur editor
+        e.preventDefault() // keep editor focus
         scrollToCursor()
       }}
       style={{
