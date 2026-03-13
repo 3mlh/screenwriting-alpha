@@ -30,7 +30,7 @@ export default async function DashboardPage() {
       <div className="mb-10">
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-xl font-semibold text-gray-900" style={{ fontFamily: 'Georgia, serif' }}>
-            Recents
+            Recent Projects
           </h2>
           {allProjects.length > 3 && (
             <Link href="/app/projects" className="text-xs text-amber-700 hover:underline font-medium">
