@@ -1,11 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import type { Project, PermissionLevel } from '@/types/screenplay'
 import type { ScriptListItem } from '@/lib/data/scripts'
 import { NewScriptModal } from './NewScriptModal'
 import { ShareDialog } from '@/components/ui/ShareDialog'
+import { ScriptContextMenu } from '@/app/app/(dashboard)/ScriptContextMenu'
 
 function timeAgo(dateString: string): string {
   const diff = Date.now() - new Date(dateString).getTime()
@@ -22,10 +24,9 @@ function timeAgo(dateString: string): string {
   return new Date(dateString).toLocaleDateString()
 }
 
-
 export function ProjectDetailClient({
   project,
-  scripts,
+  scripts: initialScripts,
   userId,
   currentUserRole,
 }: {
@@ -34,9 +35,65 @@ export function ProjectDetailClient({
   userId: string
   currentUserRole: PermissionLevel
 }) {
+  const [scripts, setScripts] = useState(initialScripts)
   const [modalOpen, setModalOpen] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
+  const [renameId, setRenameId] = useState<string | null>(null)
+  const [renameTitle, setRenameTitle] = useState('')
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const renameInputRef = useRef<HTMLInputElement>(null)
+  const router = useRouter()
+
   const canEdit = currentUserRole === 'owner' || currentUserRole === 'editor'
+  const canDelete = currentUserRole === 'owner'
+
+  useEffect(() => {
+    if (renameId) renameInputRef.current?.select()
+  }, [renameId])
+
+  function startRename(script: ScriptListItem) {
+    setRenameTitle(script.title)
+    setRenameId(script.id)
+  }
+
+  async function submitRename(scriptId: string) {
+    const trimmed = renameTitle.trim()
+    if (!trimmed || trimmed === scripts.find(s => s.id === scriptId)?.title) {
+      setRenameId(null)
+      return
+    }
+    setBusy(true)
+    try {
+      const res = await fetch(`/api/scripts/${scriptId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: trimmed }),
+      })
+      if (res.ok) {
+        setScripts(prev => prev.map(s => s.id === scriptId ? { ...s, title: trimmed } : s))
+      }
+    } finally {
+      setRenameId(null)
+      setBusy(false)
+    }
+  }
+
+  async function handleDelete(scriptId: string) {
+    setBusy(true)
+    try {
+      const res = await fetch(`/api/scripts/${scriptId}`, { method: 'DELETE' })
+      if (res.ok) {
+        setScripts(prev => prev.filter(s => s.id !== scriptId))
+        router.refresh()
+      }
+    } finally {
+      setDeleteConfirmId(null)
+      setBusy(false)
+    }
+  }
+
+  const scriptToDelete = scripts.find(s => s.id === deleteConfirmId)
 
   return (
     <div className="px-8 py-8 max-w-4xl">
@@ -104,15 +161,7 @@ export function ProjectDetailClient({
       {/* Scripts */}
       {scripts.length === 0 ? (
         <div className="text-center py-16 text-gray-400 bg-white rounded-xl border border-stone-200">
-          <svg
-            width="32"
-            height="32"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            className="mx-auto mb-3 text-gray-300"
-          >
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mx-auto mb-3 text-gray-300">
             <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
             <polyline points="14 2 14 8 20 8" />
             <line x1="16" y1="13" x2="8" y2="13" />
@@ -121,10 +170,7 @@ export function ProjectDetailClient({
           <p className="text-sm">No scripts yet.</p>
           {canEdit && (
             <p className="text-xs mt-1">
-              <button
-                onClick={() => setModalOpen(true)}
-                className="text-amber-700 hover:underline font-medium"
-              >
+              <button onClick={() => setModalOpen(true)} className="text-amber-700 hover:underline font-medium">
                 Create your first script
               </button>{' '}
               to start writing.
@@ -132,7 +178,7 @@ export function ProjectDetailClient({
           )}
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">
+        <div className="bg-white rounded-xl border border-stone-200">
           <table className="w-full">
             <thead>
               <tr className="border-b border-stone-100">
@@ -142,6 +188,7 @@ export function ProjectDetailClient({
                 <th className="text-left text-[10px] font-semibold uppercase tracking-wider text-gray-400 py-2.5 px-4">
                   Modified
                 </th>
+                {(canEdit || canDelete) && <th className="w-10" />}
               </tr>
             </thead>
             <tbody>
@@ -151,31 +198,81 @@ export function ProjectDetailClient({
                   className="border-b border-stone-100 last:border-0 hover:bg-stone-50 transition-colors group"
                 >
                   <td className="py-3 pl-5">
-                    <Link
-                      href={`/app/scripts/${script.id}`}
-                      className="flex items-center gap-2.5"
-                    >
-                      {(script.memberCount > 1 || project.memberCount > 1) ? (
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="flex-shrink-0 text-amber-600" aria-label="Shared">
-                          <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" />
-                          <path d="M23 21v-2a4 4 0 00-3-3.87" /><path d="M16 3.13a4 4 0 010 7.75" />
-                        </svg>
-                      ) : (
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-gray-400 flex-shrink-0" aria-label="Private">
-                          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-                          <polyline points="14 2 14 8 20 8" />
-                        </svg>
-                      )}
-                      <span className="text-sm text-gray-800 font-medium group-hover:text-amber-800 transition-colors">
-                        {script.title}
-                      </span>
-                    </Link>
+                    {renameId === script.id ? (
+                      <input
+                        ref={renameInputRef}
+                        value={renameTitle}
+                        onChange={e => setRenameTitle(e.target.value)}
+                        onBlur={() => submitRename(script.id)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') submitRename(script.id)
+                          if (e.key === 'Escape') setRenameId(null)
+                        }}
+                        disabled={busy}
+                        className="text-sm font-medium text-gray-800 border border-amber-300 rounded px-2 py-0.5 outline-none focus:ring-1 focus:ring-amber-400 w-full max-w-xs"
+                      />
+                    ) : (
+                      <Link href={`/app/scripts/${script.id}`} className="flex items-center gap-2.5">
+                        {(script.memberCount > 1 || project.memberCount > 1) ? (
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="flex-shrink-0 text-amber-600" aria-label="Shared">
+                            <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" />
+                            <path d="M23 21v-2a4 4 0 00-3-3.87" /><path d="M16 3.13a4 4 0 010 7.75" />
+                          </svg>
+                        ) : (
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-gray-400 flex-shrink-0" aria-label="Private">
+                            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                            <polyline points="14 2 14 8 20 8" />
+                          </svg>
+                        )}
+                        <span className="text-sm text-gray-800 font-medium group-hover:text-amber-800 transition-colors">
+                          {script.title}
+                        </span>
+                      </Link>
+                    )}
                   </td>
                   <td className="py-3 px-4 text-xs text-gray-400">{timeAgo(script.updatedAt)}</td>
+                  {(canEdit || canDelete) && (
+                    <td className="py-3 pr-3">
+                      <ScriptContextMenu
+                        canRename={canEdit}
+                        canDelete={canDelete}
+                        onRename={() => startRename(script)}
+                        onDelete={() => setDeleteConfirmId(script.id)}
+                      />
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Delete confirm modal */}
+      {deleteConfirmId && scriptToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl border border-stone-200 shadow-xl p-6 max-w-sm w-full mx-4">
+            <h3 className="text-base font-semibold text-gray-900 mb-2">Delete script?</h3>
+            <p className="text-sm text-gray-500 mb-5">
+              &ldquo;{scriptToDelete.title}&rdquo; will be permanently deleted. This cannot be undone.
+            </p>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setDeleteConfirmId(null)}
+                disabled={busy}
+                className="px-3 py-1.5 text-sm text-gray-600 border border-stone-200 rounded-lg hover:bg-stone-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDelete(deleteConfirmId)}
+                disabled={busy}
+                className="px-3 py-1.5 text-sm text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50"
+              >
+                {busy ? 'Deleting…' : 'Delete'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

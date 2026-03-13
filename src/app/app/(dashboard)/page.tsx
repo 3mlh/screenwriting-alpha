@@ -2,41 +2,14 @@
 
 import Link from 'next/link'
 import { getSupabaseServerClient } from '@/lib/supabase/server'
+
 import { listProjects } from '@/lib/data/projects'
 import { listAllScripts } from '@/lib/data/scripts'
 import { listMyInvites } from '@/lib/data/invites'
 import { requireUser } from '@/lib/auth/permissions'
-import { ProjectCard, timeAgo } from './ProjectCard'
-import type { ScriptListItem } from '@/lib/data/scripts'
+import { ProjectCard } from './ProjectCard'
+import { RecentScriptsList } from './RecentScriptsList'
 import { PendingInvites } from './PendingInvites'
-
-export const metadata = { title: 'Recents — Writer\'s Room' }
-
-function ScriptRow({ script }: { script: ScriptListItem }) {
-  return (
-    <tr className="group border-b border-stone-100 last:border-0 hover:bg-stone-50 transition-colors">
-      <td className="py-3 pl-4">
-        <Link href={`/app/scripts/${script.id}`} className="flex items-center gap-2.5">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-gray-400 flex-shrink-0">
-            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-            <polyline points="14 2 14 8 20 8" />
-          </svg>
-          <span className="text-sm text-gray-800 font-medium group-hover:text-amber-800 transition-colors">
-            {script.title}
-          </span>
-        </Link>
-      </td>
-      <td className="py-3 px-3 text-xs text-gray-400">
-        {script.projectTitle ? (
-          <Link href={`/app/projects/${script.projectId}`} className="hover:text-amber-700 transition-colors">
-            {script.projectTitle}
-          </Link>
-        ) : '—'}
-      </td>
-      <td className="py-3 px-3 text-xs text-gray-400">{timeAgo(script.updatedAt)}</td>
-    </tr>
-  )
-}
 
 export default async function DashboardPage() {
   const supabase = await getSupabaseServerClient()
@@ -88,28 +61,7 @@ export default async function DashboardPage() {
               Recent Scripts
             </h2>
           </div>
-          <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-stone-100">
-                  <th className="text-left text-[10px] font-semibold uppercase tracking-wider text-gray-400 py-2 pl-4">
-                    Title
-                  </th>
-                  <th className="text-left text-[10px] font-semibold uppercase tracking-wider text-gray-400 py-2 px-3">
-                    Project
-                  </th>
-                  <th className="text-left text-[10px] font-semibold uppercase tracking-wider text-gray-400 py-2 px-3">
-                    Modified
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentScripts.map((script) => (
-                  <ScriptRow key={script.id} script={script} />
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <RecentScriptsList initialScripts={recentScripts} />
         </div>
       )}
     </div>
