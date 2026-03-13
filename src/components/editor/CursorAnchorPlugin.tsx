@@ -8,65 +8,88 @@ import { getParentScreenplayBlock } from './blockTypeUtils'
 
 type Side = 'above' | 'below' | null
 
+interface ToastPos {
+  side: Side
+  centerX: number   // px from left edge of viewport
+  topY: number      // px from top (used when side === 'above')
+  bottomY: number   // px from bottom of viewport (used when side === 'below')
+}
+
 export function CursorAnchorPlugin(): React.ReactElement | null {
   const [editor] = useLexicalComposerContext()
-  const [side, setSide] = useState<Side>(null)
+  const [pos, setPos] = useState<ToastPos | null>(null)
   const focusedKeyRef = useRef<string | null>(null)
   const containerRef = useRef<HTMLElement | null>(null)
 
-  // Reusable check: compare focused block's rect against the scroll container's rect
-  function checkVisibility() {
+  function computePos(): ToastPos | null {
     const key = focusedKeyRef.current
-    if (!key) { setSide(null); return }
+    if (!key) return null
 
     const dom = editor.getElementByKey(key)
-    if (!dom) { setSide(null); return }
+    if (!dom) return null
 
-    const container = containerRef.current ?? dom.closest('.editor-main') as HTMLElement | null
-    if (!container) { setSide(null); return }
-    containerRef.current = container
+    const container = containerRef.current
+    if (!container) return null
 
     const domRect = dom.getBoundingClientRect()
-    const containerRect = container.getBoundingClientRect()
+    const cRect = container.getBoundingClientRect()
 
-    if (domRect.bottom < containerRect.top) {
-      setSide('above')
-    } else if (domRect.top > containerRect.bottom) {
-      setSide('below')
-    } else {
-      setSide(null)
+    // Center the toast over the editor-main column
+    const centerX = cRect.left + cRect.width / 2
+
+    // The block-type-selector-bar is sticky at the top of the container.
+    // Measure it so we can clear it.
+    const blockBar = container.querySelector('.block-type-selector-bar') as HTMLElement | null
+    const blockBarH = blockBar ? blockBar.getBoundingClientRect().height : 0
+
+    let side: Side = null
+    if (domRect.bottom < cRect.top + blockBarH) {
+      side = 'above'
+    } else if (domRect.top > cRect.bottom) {
+      side = 'below'
     }
+
+    if (!side) return null
+
+    return {
+      side,
+      centerX,
+      topY: cRect.top + blockBarH + 8,
+      bottomY: window.innerHeight - cRect.bottom + 8,
+    }
+  }
+
+  function refresh() {
+    setPos(computePos())
   }
 
   // Track focused block key on every editor state change
   useEffect(() => {
     return editor.registerUpdateListener(({ editorState }) => {
       editorState.read(() => {
-        const selection = $getSelection()
-        if ($isRangeSelection(selection)) {
-          const block = getParentScreenplayBlock(selection.anchor.getNode())
+        const sel = $getSelection()
+        if ($isRangeSelection(sel)) {
+          const block = getParentScreenplayBlock(sel.anchor.getNode())
           focusedKeyRef.current = block ? block.getKey() : null
         } else {
           focusedKeyRef.current = null
         }
       })
-      checkVisibility()
+      refresh()
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor])
 
-  // Also re-check on scroll so the toast appears/disappears as the user scrolls
+  // Attach scroll listener and cache container ref once editor mounts
   useEffect(() => {
-    // Find the scroll container once the editor mounts
     const editorRoot = editor.getRootElement()
     if (!editorRoot) return
     const container = editorRoot.closest('.editor-main') as HTMLElement | null
     if (!container) return
     containerRef.current = container
 
-    const onScroll = () => checkVisibility()
-    container.addEventListener('scroll', onScroll, { passive: true })
-    return () => container.removeEventListener('scroll', onScroll)
+    container.addEventListener('scroll', refresh, { passive: true })
+    return () => container.removeEventListener('scroll', refresh)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor])
 
@@ -76,7 +99,7 @@ export function CursorAnchorPlugin(): React.ReactElement | null {
     editor.getElementByKey(key)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }
 
-  if (!side) return null
+  if (!pos) return null
 
   return createPortal(
     <button
@@ -86,9 +109,11 @@ export function CursorAnchorPlugin(): React.ReactElement | null {
       }}
       style={{
         position: 'fixed',
-        left: '50%',
+        left: pos.centerX,
         transform: 'translateX(-50%)',
-        ...(side === 'above' ? { top: '72px' } : { bottom: '40px' }),
+        ...(pos.side === 'above'
+          ? { top: pos.topY }
+          : { bottom: pos.bottomY }),
         zIndex: 50,
       }}
       className="
@@ -103,7 +128,7 @@ export function CursorAnchorPlugin(): React.ReactElement | null {
         cursor-pointer
         select-none
       "
-      aria-label={`Cursor is ${side === 'above' ? 'above' : 'below'} — click to jump back`}
+      aria-label={`Cursor is ${pos.side === 'above' ? 'above' : 'below'} — click to jump back`}
     >
       <svg
         width="11"
@@ -115,7 +140,7 @@ export function CursorAnchorPlugin(): React.ReactElement | null {
         strokeLinecap="round"
         strokeLinejoin="round"
         aria-hidden="true"
-        style={{ transform: side === 'above' ? 'rotate(180deg)' : undefined }}
+        style={{ transform: pos.side === 'above' ? 'rotate(180deg)' : undefined }}
       >
         <polyline points="2 4 6 8 10 4" />
       </svg>
