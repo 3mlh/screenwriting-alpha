@@ -7,6 +7,9 @@
 # testing
 /coverage
 
+# data for testing
+/scripts
+
 # next.js
 /.next/
 /out/
