@@ -7,6 +7,7 @@
 // Returns the snapshot id and taken_at timestamp.
 
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { v4 as uuidv4 } from 'uuid'
 import type { Database } from '@/lib/supabase/database.types'
 import type { Block } from '@/types/screenplay'
 
@@ -29,23 +30,23 @@ export async function createSnapshot(
   }
 ): Promise<SnapshotResult> {
   const { scriptId, userId, blocks, triggerType, label } = opts
+  const snapshotId = uuidv4()
+  const takenAt = new Date().toISOString()
 
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from('script_snapshots')
     .insert({
+      id: snapshotId,
       script_id: scriptId,
       taken_by: userId,
+      taken_at: takenAt,
       blocks: blocks as unknown as Database['public']['Tables']['script_snapshots']['Insert']['blocks'],
       trigger_type: triggerType,
       ...(label ? { label } : {}),
     })
-    .select('id, taken_at')
-    .single()
 
-  if (error || !data) throw error ?? new Error('Failed to create snapshot')
-
-  const row = data as unknown as { id: string; taken_at: string }
-  return { id: row.id, takenAt: row.taken_at }
+  if (error) throw error ?? new Error('Failed to create snapshot')
+  return { id: snapshotId, takenAt }
 }
 
 // ── Last snapshot time ────────────────────────────────────────────────────────

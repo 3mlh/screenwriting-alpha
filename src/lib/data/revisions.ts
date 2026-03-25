@@ -5,6 +5,7 @@
 // for permission checks (requireScriptRole) before calling these.
 
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { v4 as uuidv4 } from 'uuid'
 import type { Database } from '@/lib/supabase/database.types'
 import type { Block, ScriptSnapshot, RevisionSet } from '@/types/screenplay'
 import { safeValidateBlocks } from '@/lib/validation/block.schema'
@@ -125,9 +126,12 @@ export async function createRevisionSet(
     openSnapshotId: string
   }
 ): Promise<RevisionSet> {
-  const { data, error } = await supabase
+  const revisionSetId = uuidv4()
+
+  const { error } = await supabase
     .from('revision_sets')
     .insert({
+      id: revisionSetId,
       script_id: opts.scriptId,
       name: opts.name,
       color: opts.color,
@@ -135,11 +139,11 @@ export async function createRevisionSet(
       created_by: opts.userId,
       is_active: true,
     })
-    .select()
-    .single()
 
-  if (error || !data) throw error ?? new Error('Failed to create revision set')
-  return toRevisionSet(data as unknown as RevisionSetRow)
+  if (error) throw error ?? new Error('Failed to create revision set')
+  const revisionSet = await getRevisionSet(supabase, revisionSetId)
+  if (!revisionSet) throw new Error('Failed to load created revision set')
+  return revisionSet
 }
 
 export async function closeRevisionSet(
@@ -147,7 +151,7 @@ export async function closeRevisionSet(
   revisionSetId: string,
   closeSnapshotId: string
 ): Promise<RevisionSet> {
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from('revision_sets')
     .update({
       close_snapshot_id: closeSnapshotId,
@@ -155,11 +159,11 @@ export async function closeRevisionSet(
       is_active: false,
     })
     .eq('id', revisionSetId)
-    .select()
-    .single()
 
-  if (error || !data) throw error ?? new Error('Failed to close revision set')
-  return toRevisionSet(data as unknown as RevisionSetRow)
+  if (error) throw error ?? new Error('Failed to close revision set')
+  const revisionSet = await getRevisionSet(supabase, revisionSetId)
+  if (!revisionSet) throw new Error('Failed to load closed revision set')
+  return revisionSet
 }
 
 export async function updateRevisionSetMeta(
@@ -167,15 +171,15 @@ export async function updateRevisionSetMeta(
   revisionSetId: string,
   update: { name?: string; color?: string }
 ): Promise<RevisionSet> {
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from('revision_sets')
     .update(update)
     .eq('id', revisionSetId)
-    .select()
-    .single()
 
-  if (error || !data) throw error ?? new Error('Failed to update revision set')
-  return toRevisionSet(data as unknown as RevisionSetRow)
+  if (error) throw error ?? new Error('Failed to update revision set')
+  const revisionSet = await getRevisionSet(supabase, revisionSetId)
+  if (!revisionSet) throw new Error('Failed to load updated revision set')
+  return revisionSet
 }
 
 // ── Active revision lookup ────────────────────────────────────────────────────

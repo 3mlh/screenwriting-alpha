@@ -8,6 +8,7 @@
 // the function return signatures enforce correctness externally.
 
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { v4 as uuidv4 } from 'uuid'
 import type { Database } from '@/lib/supabase/database.types'
 import type { Project } from '@/types/screenplay'
 
@@ -65,18 +66,22 @@ export async function createProject(
   userId: string,
   input: { title: string; description?: string }
 ): Promise<Project> {
-  const { data, error } = await supabase
+  const projectId = uuidv4()
+
+  const { error } = await supabase
     .from('projects')
     .insert({
+      id: projectId,
       title: input.title.trim(),
       description: input.description?.trim() ?? null,
       created_by: userId,
     } as Database['public']['Tables']['projects']['Insert'])
-    .select()
-    .single()
 
-  if (error || !data) throw error ?? new Error('Failed to create project')
-  return toProject(data as unknown as ProjectRow)
+  if (error) throw error
+
+  const project = await getProject(supabase, projectId)
+  if (!project) throw new Error('Failed to load created project')
+  return project
 }
 
 export async function updateProject(
@@ -84,18 +89,16 @@ export async function updateProject(
   projectId: string,
   update: { title?: string; description?: string }
 ): Promise<Project | null> {
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from('projects')
     .update({
       ...(update.title !== undefined && { title: update.title.trim() }),
       ...(update.description !== undefined && { description: update.description.trim() || null }),
     } as Database['public']['Tables']['projects']['Update'])
     .eq('id', projectId)
-    .select()
-    .single()
 
-  if (error || !data) return null
-  return toProject(data as unknown as ProjectRow)
+  if (error) return null
+  return getProject(supabase, projectId)
 }
 
 export async function listSharedProjects(

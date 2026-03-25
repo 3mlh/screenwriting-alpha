@@ -5,6 +5,7 @@
 // Access control enforced at the Route Handler layer before these are called.
 
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { v4 as uuidv4 } from 'uuid'
 import type { Database } from '@/lib/supabase/database.types'
 import type { InviteWithContext, PermissionLevel } from '@/types/screenplay'
 import { addProjectMember, addScriptMember } from './members'
@@ -135,6 +136,8 @@ export async function createInvite(
     role: PermissionLevel
   }
 ): Promise<{ id: string }> {
+  const inviteId = uuidv4()
+
   // Guard: no duplicate pending invite.
   const { count } = await supabase
     .from('invites')
@@ -157,20 +160,19 @@ export async function createInvite(
 
   if ((memberCount ?? 0) > 0) throw new AlreadyMemberError()
 
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from('invites')
     .insert({
+      id: inviteId,
       resource_type: params.resourceType,
       resource_id: params.resourceId,
       invited_user_id: params.invitedUserId,
       invited_by: params.invitedBy,
       role: params.role,
     })
-    .select('id')
-    .single()
 
-  if (error || !data) throw error ?? new Error('Failed to create invite')
-  return { id: (data as { id: string }).id }
+  if (error) throw error ?? new Error('Failed to create invite')
+  return { id: inviteId }
 }
 
 export async function acceptInvite(

@@ -50,7 +50,15 @@ export function usePresence(
 
     function syncState() {
       const state = channel.presenceState<PresenceUser>()
-      const users: PresenceUser[] = Object.values(state).flat()
+      const usersById = new Map<string, PresenceUser>()
+
+      for (const entries of Object.values(state)) {
+        for (const entry of entries) {
+          usersById.set(entry.userId, entry)
+        }
+      }
+
+      const users = Array.from(usersById.values())
       // Always include self even while presence is syncing
       if (!users.some((u) => u.userId === currentUser.userId)) {
         users.unshift(myPresenceRef.current)

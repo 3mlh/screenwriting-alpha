@@ -9,6 +9,7 @@
 // the function return signatures enforce correctness externally.
 
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { v4 as uuidv4 } from 'uuid'
 import type { Database } from '@/lib/supabase/database.types'
 import type { Script, Block } from '@/types/screenplay'
 import { safeValidateBlocks } from '@/lib/validation/block.schema'
@@ -131,19 +132,23 @@ export async function createScript(
     initialBlocks?: Block[]
   }
 ): Promise<Script> {
-  const { data, error } = await supabase
+  const scriptId = uuidv4()
+
+  const { error } = await supabase
     .from('scripts')
     .insert({
+      id: scriptId,
       project_id: input.projectId,
       title: input.title.trim(),
       blocks: (input.initialBlocks ?? []) as unknown as Database['public']['Tables']['scripts']['Insert']['blocks'],
       created_by: userId,
     } as Database['public']['Tables']['scripts']['Insert'])
-    .select()
-    .single()
 
-  if (error || !data) throw error ?? new Error('Failed to create script')
-  return toScript(data as unknown as ScriptRowWithCount)
+  if (error) throw error
+
+  const script = await getScript(supabase, scriptId)
+  if (!script) throw new Error('Failed to load created script')
+  return script
 }
 
 export async function updateScriptMeta(
@@ -151,17 +156,15 @@ export async function updateScriptMeta(
   scriptId: string,
   update: { title?: string }
 ): Promise<Script | null> {
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from('scripts')
     .update({
       ...(update.title !== undefined && { title: update.title.trim() }),
     } as Database['public']['Tables']['scripts']['Update'])
     .eq('id', scriptId)
-    .select()
-    .single()
 
-  if (error || !data) return null
-  return toScript(data as unknown as ScriptRowWithCount)
+  if (error) return null
+  return getScript(supabase, scriptId)
 }
 
 export async function saveScriptBlocks(
@@ -169,14 +172,20 @@ export async function saveScriptBlocks(
   scriptId: string,
   blocks: Block[]
 ): Promise<{ updatedAt: string }> {
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from('scripts')
     .update({ blocks: blocks as unknown as Database['public']['Tables']['scripts']['Update']['blocks'] } as Database['public']['Tables']['scripts']['Update'])
     .eq('id', scriptId)
+
+  if (error) throw error ?? new Error('Failed to save blocks')
+
+  const { data, error: readError } = await supabase
+    .from('scripts')
     .select('updated_at')
+    .eq('id', scriptId)
     .single()
 
-  if (error || !data) throw error ?? new Error('Failed to save blocks')
+  if (readError || !data) throw readError ?? new Error('Failed to load updated script timestamp')
   const row = data as unknown as Pick<ScriptRow, 'updated_at'>
   return { updatedAt: row.updated_at }
 }

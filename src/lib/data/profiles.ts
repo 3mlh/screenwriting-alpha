@@ -52,16 +52,14 @@ export async function updateProfile(
   userId: string,
   update: { displayName?: string; avatarUrl?: string }
 ): Promise<UserProfile | null> {
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from('profiles')
     .update({
       ...(update.displayName !== undefined && { display_name: update.displayName }),
       ...(update.avatarUrl !== undefined && { avatar_url: update.avatarUrl }),
     } as Database['public']['Tables']['profiles']['Update'])
     .eq('id', userId)
-    .select()
-    .single()
 
-  if (error || !data) return null
-  return toProfile(data as unknown as ProfileRow)
+  if (error) return null
+  return getProfile(supabase, userId)
 }
