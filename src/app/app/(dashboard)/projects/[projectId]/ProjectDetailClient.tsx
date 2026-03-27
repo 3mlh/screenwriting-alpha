@@ -9,6 +9,14 @@ import { NewScriptModal } from './NewScriptModal'
 import { ShareDialog } from '@/components/ui/ShareDialog'
 import { ScriptContextMenu } from '@/app/app/(dashboard)/ScriptContextMenu'
 
+const IMPORT_ACCEPT_ATTR = '.pdf,.txt'
+const SUPPORTED_IMPORT_EXTENSIONS = new Set(['pdf', 'txt'])
+
+function getFileExtension(fileName: string): string | null {
+  const match = fileName.toLowerCase().match(/\.([a-z0-9]+)$/)
+  return match ? match[1] : null
+}
+
 function timeAgo(dateString: string): string {
   const diff = Date.now() - new Date(dateString).getTime()
   const m = Math.floor(diff / 60000)
@@ -42,7 +50,11 @@ export function ProjectDetailClient({
   const [renameTitle, setRenameTitle] = useState('')
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [isImporting, setIsImporting] = useState(false)
+  const [importError, setImportError] = useState<string | null>(null)
+  const [importFileName, setImportFileName] = useState<string | null>(null)
   const renameInputRef = useRef<HTMLInputElement>(null)
+  const importInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
   const canEdit = currentUserRole === 'owner' || currentUserRole === 'editor'
@@ -93,6 +105,53 @@ export function ProjectDetailClient({
     }
   }
 
+  function handleImportClick() {
+    if (isImporting) return
+    setImportError(null)
+    importInputRef.current?.click()
+  }
+
+  async function handleImportChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+
+    if (!file) return
+
+    const extension = getFileExtension(file.name)
+    if (!extension || !SUPPORTED_IMPORT_EXTENSIONS.has(extension)) {
+      setImportError('Only .pdf and .txt imports are supported right now.')
+      return
+    }
+
+    setImportError(null)
+    setImportFileName(file.name)
+    setIsImporting(true)
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const res = await fetch(`/api/projects/${project.id}/scripts/import`, {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        setImportError(json.error ?? 'Failed to import script')
+        return
+      }
+
+      const script = await res.json()
+      router.push(`/app/scripts/${script.id}`)
+    } catch {
+      setImportError('Failed to import script')
+    } finally {
+      setIsImporting(false)
+      setImportFileName(null)
+    }
+  }
+
   const scriptToDelete = scripts.find(s => s.id === deleteConfirmId)
 
   return (
@@ -133,6 +192,15 @@ export function ProjectDetailClient({
         </div>
 
         <div className="flex items-center gap-2 flex-shrink-0">
+          {canEdit && (
+            <input
+              ref={importInputRef}
+              type="file"
+              accept={IMPORT_ACCEPT_ATTR}
+              className="sr-only"
+              onChange={handleImportChange}
+            />
+          )}
           <button
             onClick={() => setShareOpen(true)}
             className="flex items-center gap-1.5 text-sm px-3 py-2 border border-stone-200 text-gray-600 hover:text-gray-900 hover:bg-stone-50 rounded-lg transition-colors font-medium"
@@ -145,7 +213,34 @@ export function ProjectDetailClient({
           </button>
           {canEdit && (
             <button
+              onClick={handleImportClick}
+              disabled={isImporting}
+              className="flex items-center gap-1.5 text-sm px-4 py-2 border border-stone-200 text-gray-700 hover:text-gray-900 hover:bg-stone-50 rounded-lg transition-colors font-medium disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {isImporting ? (
+                <>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" className="animate-spin">
+                    <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" className="opacity-25" />
+                    <path d="M21 12a9 9 0 00-9-9" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+                  </svg>
+                  Importing…
+                </>
+              ) : (
+                <>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 3v12" />
+                    <path d="m7 10 5 5 5-5" />
+                    <path d="M5 21h14" />
+                  </svg>
+                  Import script
+                </>
+              )}
+            </button>
+          )}
+          {canEdit && (
+            <button
               onClick={() => setModalOpen(true)}
+              disabled={isImporting}
               className="flex items-center gap-1.5 text-sm px-4 py-2 bg-amber-700 hover:bg-amber-800 text-white rounded-lg transition-colors font-medium"
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -157,6 +252,25 @@ export function ProjectDetailClient({
           )}
         </div>
       </div>
+
+      {(isImporting || importError) && (
+        <div className={`mb-5 rounded-lg border px-4 py-3 text-sm ${
+          importError
+            ? 'border-red-200 bg-red-50 text-red-700'
+            : 'border-amber-200 bg-amber-50 text-amber-800'
+        }`}>
+          {isImporting && (
+            <div className="flex items-center gap-2">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="animate-spin">
+                <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" className="opacity-25" />
+                <path d="M21 12a9 9 0 00-9-9" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+              </svg>
+              <span>Importing {importFileName ?? 'script'}… this can take a bit for larger files.</span>
+            </div>
+          )}
+          {!isImporting && importError && <span>{importError}</span>}
+        </div>
+      )}
 
       {/* Scripts */}
       {scripts.length === 0 ? (
@@ -173,7 +287,10 @@ export function ProjectDetailClient({
               <button onClick={() => setModalOpen(true)} className="text-amber-700 hover:underline font-medium">
                 Create your first script
               </button>{' '}
-              to start writing.
+              to start writing, or{' '}
+              <button onClick={handleImportClick} className="text-amber-700 hover:underline font-medium">
+                import one
+              </button>.
             </p>
           )}
         </div>
