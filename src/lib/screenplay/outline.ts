@@ -17,11 +17,19 @@ import { deriveScenes } from './scenes'
 export function deriveOutline(blocks: Block[]): OutlineNode[] {
   // Pre-compute scene numbers and descriptions from deriveScenes
   const scenes = deriveScenes(blocks)
-  const sceneNumbers = new Map<string, number>()
+  const sceneNumbers = new Map<string, string>()
   const sceneDescriptions = new Map<string, string>()
 
   for (const scene of scenes) {
-    sceneNumbers.set(scene.id, scene.sceneNumber)
+    const importedSceneNumber =
+      scene.heading.metadata &&
+      typeof scene.heading.metadata === 'object' &&
+      'scene_number' in scene.heading.metadata &&
+      typeof scene.heading.metadata.scene_number === 'string'
+        ? scene.heading.metadata.scene_number
+        : null
+
+    sceneNumbers.set(scene.id, importedSceneNumber ?? String(scene.sceneNumber))
     const descBlock =
       scene.blocks.find(b => b.type === 'summary') ??
       scene.blocks.find(b => b.type === 'action')

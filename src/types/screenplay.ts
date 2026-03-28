@@ -86,7 +86,7 @@ export interface OutlineNode {
   type: 'section' | 'scene'
   label: string
   level?: 1 | 2 | 3       // for section nodes
-  sceneNumber?: number     // for scene nodes
+  sceneNumber?: string     // display number for scene nodes (imported or derived)
   description?: string     // for scene nodes: first summary or action text
   children?: OutlineNode[] // sections can contain scenes
 }
