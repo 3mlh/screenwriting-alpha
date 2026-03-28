@@ -34,7 +34,7 @@ const txtImporter: ScriptImporter = {
 const pdfImporter: ScriptImporter = {
   format: 'pdf',
   extensions: ['pdf'],
-  async parse(_file: File): Promise<ScriptImportResult> {
+  async parse(): Promise<ScriptImportResult> {
     throw new ScriptImportNotReadyError('PDF import is the next step. Please use a .txt export for now.')
   },
 }
@@ -42,7 +42,7 @@ const pdfImporter: ScriptImporter = {
 const fdxImporter: ScriptImporter = {
   format: 'fdx',
   extensions: ['fdx'],
-  async parse(_file: File): Promise<ScriptImportResult> {
+  async parse(): Promise<ScriptImportResult> {
     throw new ScriptImportNotReadyError('FDX import is planned, but not wired up yet.')
   },
 }
