@@ -91,6 +91,11 @@ export interface OutlineNode {
   children?: OutlineNode[] // sections can contain scenes
 }
 
+export interface CursorAnchor {
+  blockId: string
+  offset: number
+}
+
 // ─── Script ───────────────────────────────────────────────────────────────────
 
 export interface Script {

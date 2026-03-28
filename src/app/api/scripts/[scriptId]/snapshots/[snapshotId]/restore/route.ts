@@ -9,6 +9,7 @@ import { requireScriptRole, requireUser } from '@/lib/auth/permissions'
 import { getSnapshot, restoreScriptToSnapshot } from '@/lib/data/revisions'
 import { createSnapshot } from '@/lib/revisions/snapshot'
 import { getScriptBlocks } from '@/lib/data/scripts'
+import { replaceScriptSearchChunks } from '@/lib/search/index'
 import { toApiError } from '@/lib/auth/errors'
 
 type Params = { params: Promise<{ scriptId: string; snapshotId: string }> }
@@ -38,6 +39,11 @@ export async function POST(_req: Request, { params }: Params) {
     })
 
     await restoreScriptToSnapshot(supabase, scriptId, target.blocks)
+    try {
+      await replaceScriptSearchChunks(supabase, user.id, scriptId, target.blocks)
+    } catch (indexError) {
+      console.error('Failed to refresh search index after snapshot restore:', indexError)
+    }
 
     return NextResponse.json({
       restoredTo: snapshotId,

@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { ContentEditable } from '@lexical/react/LexicalContentEditable'
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
@@ -9,7 +9,18 @@ import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin'
 import LexicalErrorBoundary from '@lexical/react/LexicalErrorBoundary'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import type { EditorState, LexicalNode } from 'lexical'
-import { COMMAND_PRIORITY_HIGH, PASTE_COMMAND, $createTextNode, $getRoot, $getSelection, $isRangeSelection } from 'lexical'
+import {
+  COMMAND_PRIORITY_LOW,
+  COMMAND_PRIORITY_HIGH,
+  KEY_DOWN_COMMAND,
+  PASTE_COMMAND,
+  $createTextNode,
+  $getRoot,
+  $getSelection,
+  $isElementNode,
+  $isRangeSelection,
+  $isTextNode,
+} from 'lexical'
 
 import { SCREENPLAY_NODES } from './ScreenplayNodes'
 import { $createActionNode } from './nodes/ActionNode'
@@ -218,6 +229,157 @@ function FocusedBlockPlugin(): null {
   return null
 }
 
+function JumpHighlightPlugin(): null {
+  const [editor] = useLexicalComposerContext()
+  const jumpHighlightBlockId = useScriptStore((s) => s.jumpHighlightBlockId)
+  const clearJumpHighlight = useScriptStore((s) => s.clearJumpHighlight)
+  const animatedBlockIdRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    function restartHighlightAnimation(dom: HTMLElement) {
+      dom.style.animation = 'none'
+      void dom.offsetWidth
+      dom.style.animation = ''
+    }
+
+    function applyHighlight() {
+      editor.getEditorState().read(() => {
+        const root = $getRoot()
+        for (const child of root.getChildren()) {
+          if (!$isScreenplayBlockNode(child)) continue
+          const dom = editor.getElementByKey(child.getKey()) as HTMLElement | null
+          if (!dom) continue
+
+          if (jumpHighlightBlockId && child.getBlockId() === jumpHighlightBlockId) {
+            dom.dataset.jumpHighlight = 'true'
+            if (animatedBlockIdRef.current !== jumpHighlightBlockId) {
+              restartHighlightAnimation(dom)
+              animatedBlockIdRef.current = jumpHighlightBlockId
+            }
+          } else if (dom.dataset.jumpHighlight) {
+            delete dom.dataset.jumpHighlight
+          }
+        }
+      })
+    }
+
+    applyHighlight()
+
+    const unregisterUpdate = editor.registerUpdateListener(() => {
+      applyHighlight()
+    })
+
+    const unregisterKeyDown = editor.registerCommand<KeyboardEvent>(
+      KEY_DOWN_COMMAND,
+      (event) => {
+        if (!jumpHighlightBlockId) return false
+
+        const isTypingKey =
+          (event.key.length === 1 && !event.metaKey && !event.ctrlKey) ||
+          event.key === 'Backspace' ||
+          event.key === 'Delete' ||
+          event.key === 'Enter'
+
+        if (isTypingKey) clearJumpHighlight()
+        return false
+      },
+      COMMAND_PRIORITY_LOW
+    )
+
+    const unregisterPaste = editor.registerCommand<ClipboardEvent>(
+      PASTE_COMMAND,
+      () => {
+        if (jumpHighlightBlockId) clearJumpHighlight()
+        return false
+      },
+      COMMAND_PRIORITY_LOW
+    )
+
+    return () => {
+      animatedBlockIdRef.current = null
+      unregisterUpdate()
+      unregisterKeyDown()
+      unregisterPaste()
+    }
+  }, [clearJumpHighlight, editor, jumpHighlightBlockId])
+
+  return null
+}
+
+function getFirstSelectableText(node: LexicalNode | null): LexicalNode | null {
+  if (!node) return null
+  if ($isTextNode(node)) return node
+  if ($isElementNode(node)) {
+    let child: LexicalNode | null = node.getFirstChild()
+    while (child) {
+      const found = getFirstSelectableText(child)
+      if (found) return found
+      child = child.getNextSibling()
+    }
+  }
+  return null
+}
+
+function CursorRestorePlugin(): null {
+  const [editor] = useLexicalComposerContext()
+  const pendingCursorRestore = useScriptStore((s) => s.pendingCursorRestore)
+  const clearPendingCursorRestore = useScriptStore((s) => s.clearPendingCursorRestore)
+
+  useEffect(() => {
+    if (!pendingCursorRestore) return
+
+    let cancelled = false
+    let attempts = 0
+
+    const restoreSelection = () => {
+      if (cancelled) return
+
+      let restored = false
+      editor.update(
+        () => {
+          const root = $getRoot()
+          for (const child of root.getChildren()) {
+            if (!$isScreenplayBlockNode(child)) continue
+            if (child.getBlockId() !== pendingCursorRestore.blockId) continue
+
+            const textNode = getFirstSelectableText(child)
+            if (textNode && $isTextNode(textNode)) {
+              const maxOffset = textNode.getTextContent().length
+              const clampedOffset = Math.max(0, Math.min(pendingCursorRestore.offset, maxOffset))
+              textNode.select(clampedOffset, clampedOffset)
+            } else {
+              child.selectEnd()
+            }
+
+            restored = true
+            return
+          }
+        },
+        { discrete: true }
+      )
+
+      if (restored) {
+        editor.focus()
+        clearPendingCursorRestore()
+        return
+      }
+
+      attempts += 1
+      if (attempts < 20) {
+        window.setTimeout(restoreSelection, 120)
+      }
+    }
+
+    const timer = window.setTimeout(restoreSelection, 80)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
+  }, [clearPendingCursorRestore, editor, pendingCursorRestore])
+
+  return null
+}
+
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 export interface CollaborationProps {
@@ -309,6 +471,8 @@ export function ScreenplayEditor({
         {!readOnly && <PasteNormalizerPlugin />}
         {!readOnly && <ActiveScenePlugin />}
         <FocusedBlockPlugin />
+        <JumpHighlightPlugin />
+        <CursorRestorePlugin />
         <CursorAnchorPlugin />
         {!readOnly && scriptId && <AutosavePlugin scriptId={scriptId} />}
         <RevisionMarkPlugin />

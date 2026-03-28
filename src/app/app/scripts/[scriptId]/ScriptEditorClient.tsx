@@ -2,15 +2,18 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { ScreenplayEditor } from '@/components/editor/ScreenplayEditor'
 import { OutlinePanel } from '@/components/outline/OutlinePanel'
 import { SaveIndicator } from '@/components/ui/SaveIndicator'
 import { ShareDialog } from '@/components/ui/ShareDialog'
 import { PresenceAvatars } from '@/components/ui/PresenceAvatars'
 import { RevisionPanel } from '@/components/ui/RevisionPanel'
+import { ScriptSearchControl } from '@/components/ui/ScriptSearchControl'
 import { useScriptStore } from '@/stores/scriptStore'
 import { usePresence } from '@/hooks/usePresence'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
+import { scrollToBlock } from '@/lib/editor/scrollToBlock'
 import type { Script, PermissionLevel, Block } from '@/types/screenplay'
 
 interface Props {
@@ -31,11 +34,17 @@ export function ScriptEditorClient({
   const isDirty = useScriptStore((s) => s.isDirty)
   const autosaveStatus = useScriptStore((s) => s.autosaveStatus)
   const setScript = useScriptStore((s) => s.setScript)
+  const setLastCursorAnchor = useScriptStore((s) => s.setLastCursorAnchor)
+  const setJumpHighlightBlockId = useScriptStore((s) => s.setJumpHighlightBlockId)
+  const setPendingCursorRestore = useScriptStore((s) => s.setPendingCursorRestore)
   const setPendingExternalBlocks = useScriptStore((s) => s.setPendingExternalBlocks)
 
   const [outlineOpen, setOutlineOpen] = useState(true)
   const [shareOpen, setShareOpen] = useState(false)
   const [staleData, setStaleData] = useState(false)
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const revisionPanelOpen = useScriptStore((s) => s.revisionPanelOpen)
   const setRevisionPanelOpen = useScriptStore((s) => s.setRevisionPanelOpen)
   const activeRevisionSet = useScriptStore((s) => s.activeRevisionSet)
@@ -43,8 +52,11 @@ export function ScriptEditorClient({
   // Register the script in the store so AutosavePlugin can read the scriptId
   useEffect(() => {
     setScript(script)
-    return () => setScript(null)
   }, [script, setScript])
+
+  useEffect(() => {
+    return () => setScript(null)
+  }, [setScript])
 
   // Presence + cursor tracking
   const { presences, broadcastCursor } = usePresence(script.id, {
@@ -56,8 +68,9 @@ export function ScriptEditorClient({
   const handleCursorChange = useCallback(
     (cursor: { blockId: string; offset: number } | null) => {
       broadcastCursor(cursor)
+      if (cursor) setLastCursorAnchor(cursor)
     },
-    [broadcastCursor]
+    [broadcastCursor, setLastCursorAnchor]
   )
 
   // Real-time block updates from other users.
@@ -102,6 +115,54 @@ export function ScriptEditorClient({
       channel.unsubscribe()
     }
   }, [script.id, userId, readOnly, hasPeers, setPendingExternalBlocks])
+
+  useEffect(() => {
+    const focusBlockId = searchParams.get('focusBlock')
+    const restoreCursorBlock = searchParams.get('restoreCursorBlock')
+    const restoreCursorOffset = Number(searchParams.get('restoreCursorOffset') ?? '0')
+    if (!focusBlockId && !restoreCursorBlock) return
+
+    if (focusBlockId) {
+      setJumpHighlightBlockId(focusBlockId)
+    } else if (restoreCursorBlock) {
+      setJumpHighlightBlockId(null)
+    }
+
+    if (restoreCursorBlock) {
+      setPendingCursorRestore({
+        blockId: restoreCursorBlock,
+        offset: Number.isFinite(restoreCursorOffset) ? restoreCursorOffset : 0,
+      })
+    }
+
+    let cancelled = false
+    let attempts = 0
+    const targetBlockId = focusBlockId ?? restoreCursorBlock
+    const scrollPlacement = focusBlockId ? 'search-result' : 'center'
+
+    const tryScroll = () => {
+      if (cancelled || !targetBlockId) return
+      if (scrollToBlock(targetBlockId, { placement: scrollPlacement })) return
+      attempts += 1
+      if (attempts < 20) {
+        window.setTimeout(tryScroll, 120)
+      }
+    }
+
+    const timer = window.setTimeout(tryScroll, 80)
+
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete('focusBlock')
+    params.delete('restoreCursorBlock')
+    params.delete('restoreCursorOffset')
+    const next = params.toString()
+    router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false })
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
+  }, [pathname, router, searchParams, setJumpHighlightBlockId, setPendingCursorRestore])
 
   return (
     <div className="editor-root">
@@ -170,6 +231,11 @@ export function ScriptEditorClient({
         </div>
 
         <div className="flex items-center gap-3 text-xs text-gray-400">
+          <ScriptSearchControl
+            projectId={script.projectId}
+            currentScriptId={script.id}
+          />
+
           {/* Presence avatars */}
           <PresenceAvatars presences={presences} currentUserId={userId} />
 

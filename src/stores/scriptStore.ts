@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
-import type { Block, Script, RevisionSet, BlockDiff } from '@/types/screenplay'
+import type { Block, Script, RevisionSet, BlockDiff, CursorAnchor } from '@/types/screenplay'
 
 // ─── Autosave status ──────────────────────────────────────────────────────────
 
@@ -26,6 +26,15 @@ interface ScriptState {
 
   // The scene heading block id of the scene the cursor is currently in.
   activeSceneId: string | null
+
+  // Most recent in-editor cursor position for return navigation.
+  lastCursorAnchor: CursorAnchor | null
+
+  // Search jump destination highlight. Cleared only on actual content edits.
+  jumpHighlightBlockId: string | null
+
+  // Pending cursor restore request after cross-script navigation.
+  pendingCursorRestore: CursorAnchor | null
 
   // Blocks received from a real-time peer update. When set, the
   // RealtimeBlockLoaderPlugin inside Lexical loads them and clears this field.
@@ -58,6 +67,11 @@ interface ScriptActions {
   setAutosaveStatus: (status: AutosaveStatus) => void
   setFocusedBlockType: (type: string | null) => void
   setActiveSceneId: (id: string | null) => void
+  setLastCursorAnchor: (cursor: CursorAnchor | null) => void
+  setJumpHighlightBlockId: (id: string | null) => void
+  clearJumpHighlight: () => void
+  setPendingCursorRestore: (cursor: CursorAnchor | null) => void
+  clearPendingCursorRestore: () => void
   setPendingExternalBlocks: (blocks: Block[] | null) => void
   setLastOwnSavedAt: (t: string | null) => void
   setActiveRevisionSet: (rs: RevisionSet | null) => void
@@ -75,6 +89,9 @@ const initialState: ScriptState = {
   autosaveStatus: 'idle',
   focusedBlockType: null,
   activeSceneId: null,
+  lastCursorAnchor: null,
+  jumpHighlightBlockId: null,
+  pendingCursorRestore: null,
   pendingExternalBlocks: null,
   lastOwnSavedAt: null,
   activeRevisionSet: null,
@@ -95,7 +112,13 @@ export const useScriptStore = create<ScriptState & ScriptActions>()(
 
     setScript: (script) =>
       set((state) => {
+        const prevId = state.script?.id ?? null
         state.script = script
+        if ((script?.id ?? null) !== prevId) {
+          state.lastCursorAnchor = null
+          state.jumpHighlightBlockId = null
+          state.pendingCursorRestore = null
+        }
         if (script !== null) state.revisionPanelOpen = false
       }),
 
@@ -117,6 +140,31 @@ export const useScriptStore = create<ScriptState & ScriptActions>()(
     setActiveSceneId: (id) =>
       set((state) => {
         state.activeSceneId = id
+      }),
+
+    setLastCursorAnchor: (cursor) =>
+      set((state) => {
+        state.lastCursorAnchor = cursor
+      }),
+
+    setJumpHighlightBlockId: (id) =>
+      set((state) => {
+        state.jumpHighlightBlockId = id
+      }),
+
+    clearJumpHighlight: () =>
+      set((state) => {
+        state.jumpHighlightBlockId = null
+      }),
+
+    setPendingCursorRestore: (cursor) =>
+      set((state) => {
+        state.pendingCursorRestore = cursor
+      }),
+
+    clearPendingCursorRestore: () =>
+      set((state) => {
+        state.pendingCursorRestore = null
       }),
 
     setPendingExternalBlocks: (blocks) =>

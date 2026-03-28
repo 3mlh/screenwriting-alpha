@@ -279,6 +279,89 @@ export interface Database {
           }
         ]
       }
+      script_search_chunks: {
+        Row: {
+          id: string
+          project_id: string
+          script_id: string
+          block_id: string
+          block_type: string
+          position: number
+          block_text: string
+          normalized_text: string
+          search_text: string
+          act_label: string | null
+          act_normalized: string | null
+          scene_label: string | null
+          scene_normalized: string | null
+          speaker: string | null
+          speaker_normalized: string | null
+          context_before: string | null
+          context_after: string | null
+          metadata: Json
+          embedding_version: string | null
+          embedding_payload: Json | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          project_id: string
+          script_id: string
+          block_id: string
+          block_type: string
+          position: number
+          block_text: string
+          normalized_text: string
+          search_text: string
+          act_label?: string | null
+          act_normalized?: string | null
+          scene_label?: string | null
+          scene_normalized?: string | null
+          speaker?: string | null
+          speaker_normalized?: string | null
+          context_before?: string | null
+          context_after?: string | null
+          metadata?: Json
+          embedding_version?: string | null
+          embedding_payload?: Json | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          block_text?: string
+          normalized_text?: string
+          search_text?: string
+          act_label?: string | null
+          act_normalized?: string | null
+          scene_label?: string | null
+          scene_normalized?: string | null
+          speaker?: string | null
+          speaker_normalized?: string | null
+          context_before?: string | null
+          context_after?: string | null
+          metadata?: Json
+          embedding_version?: string | null
+          embedding_payload?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'script_search_chunks_project_id_fkey'
+            columns: ['project_id']
+            isOneToOne: false
+            referencedRelation: 'projects'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'script_search_chunks_script_id_fkey'
+            columns: ['script_id']
+            isOneToOne: false
+            referencedRelation: 'scripts'
+            referencedColumns: ['id']
+          }
+        ]
+      }
       invites: {
         Row: {
           id: string
@@ -358,6 +441,27 @@ export interface Database {
       effective_script_role: {
         Args: { p_script_id: string; p_user_id: string }
         Returns: PermissionLevel | null
+      }
+      replace_script_search_chunks: {
+        Args: { p_script_id: string; p_user_id: string; p_rows: Json }
+        Returns: undefined
+      }
+      search_project_script_candidates: {
+        Args: { p_project_id: string; p_user_id: string; p_query: string; p_limit?: number }
+        Returns: {
+          script_id: string
+          script_title: string
+          block_id: string
+          block_type: string
+          block_text: string
+          act_label: string | null
+          scene_label: string | null
+          speaker: string | null
+          block_position: number
+          retrieval_score: number
+          exact_match: boolean
+          token_hits: number
+        }[]
       }
       lookup_user_by_email: {
         Args: { p_email: string }

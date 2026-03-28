@@ -7,6 +7,7 @@ import { requireUser, requireProjectRole } from '@/lib/auth/permissions'
 import { listScripts, createScript } from '@/lib/data/scripts'
 import { createSnapshot } from '@/lib/revisions/snapshot'
 import { createRevisionSet, setCurrentRevisionSet } from '@/lib/data/revisions'
+import { replaceScriptSearchChunks } from '@/lib/search/index'
 import { toApiError } from '@/lib/auth/errors'
 import { z } from 'zod'
 
@@ -63,6 +64,11 @@ export async function POST(request: Request, { params }: Params) {
     })
     await setCurrentRevisionSet(supabase, script.id, revisionSet.id)
     script.currentRevisionSetId = revisionSet.id
+    try {
+      await replaceScriptSearchChunks(supabase, user.id, script.id, [])
+    } catch (indexError) {
+      console.error('Failed to initialize search index for script:', indexError)
+    }
 
     return NextResponse.json(script, { status: 201 })
   } catch (err) {

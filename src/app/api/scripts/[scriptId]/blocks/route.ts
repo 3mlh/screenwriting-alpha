@@ -24,6 +24,7 @@ import { saveScriptBlocks } from '@/lib/data/scripts'
 import { toApiError } from '@/lib/auth/errors'
 import { validateBlocks } from '@/lib/validation/block.schema'
 import { createSnapshot } from '@/lib/revisions/snapshot'
+import { replaceScriptSearchChunks } from '@/lib/search/index'
 import { z } from 'zod'
 
 type Params = { params: Promise<{ scriptId: string }> }
@@ -43,6 +44,7 @@ export async function PUT(request: Request, { params }: Params) {
 
     // App-layer auth check (defense in depth alongside RLS)
     await requireScriptRole(supabase, scriptId, 'editor')
+    const user = await requireUser(supabase)
 
     const body = await request.json()
     const { blocks: rawBlocks, lastSnapshotAt } = putBlocksSchema.parse(body)
@@ -59,7 +61,6 @@ export async function PUT(request: Request, { params }: Params) {
 
     if (needsSnapshot) {
       try {
-        const user = await requireUser(supabase)
         const snap = await createSnapshot(supabase, {
           scriptId,
           userId: user.id,
@@ -73,6 +74,11 @@ export async function PUT(request: Request, { params }: Params) {
     }
 
     const { updatedAt } = await saveScriptBlocks(supabase, scriptId, blocks)
+    try {
+      await replaceScriptSearchChunks(supabase, user.id, scriptId, blocks)
+    } catch (indexError) {
+      console.error('Failed to refresh search index after autosave:', indexError)
+    }
 
     return NextResponse.json({ savedAt: updatedAt, ...(snapshotId ? { snapshotId } : {}) })
   } catch (err) {

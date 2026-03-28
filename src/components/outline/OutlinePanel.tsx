@@ -3,32 +3,8 @@
 import { useMemo } from 'react'
 import { useScriptStore } from '@/stores/scriptStore'
 import { deriveOutline } from '@/lib/screenplay/outline'
+import { scrollToBlock } from '@/lib/editor/scrollToBlock'
 import type { OutlineNode } from '@/types/screenplay'
-
-// ─── Scroll helper ────────────────────────────────────────────────────────────
-
-function scrollToBlock(blockId: string) {
-  const el = document.querySelector(`[data-block-id="${CSS.escape(blockId)}"]`)
-  if (!el) return
-
-  // The scrollable container is .editor-main. We scroll it manually so we can
-  // account for the sticky block-type selector bar at the top of that container.
-  const container = document.querySelector('.editor-main')
-  if (!container) {
-    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    return
-  }
-
-  const stickyBar = container.querySelector('.block-type-selector-bar')
-  const stickyHeight = stickyBar ? stickyBar.getBoundingClientRect().height : 0
-
-  const containerRect = container.getBoundingClientRect()
-  const elRect = el.getBoundingClientRect()
-  const targetScrollTop =
-    container.scrollTop + (elRect.top - containerRect.top) - stickyHeight - 16
-
-  container.scrollTo({ top: targetScrollTop, behavior: 'smooth' })
-}
 
 // ─── Scene row ────────────────────────────────────────────────────────────────
 

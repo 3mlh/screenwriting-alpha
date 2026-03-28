@@ -11,6 +11,7 @@ import {
   ScriptImportParseError,
   UnsupportedImportFormatError,
 } from '@/lib/import/types'
+import { replaceScriptSearchChunks } from '@/lib/search/index'
 
 type Params = { params: Promise<{ projectId: string }> }
 
@@ -53,6 +54,11 @@ export async function POST(request: Request, { params }: Params) {
     })
     await setCurrentRevisionSet(supabase, script.id, revisionSet.id)
     script.currentRevisionSetId = revisionSet.id
+    try {
+      await replaceScriptSearchChunks(supabase, user.id, script.id, imported.blocks)
+    } catch (indexError) {
+      console.error('Failed to build search index for imported script:', indexError)
+    }
 
     return NextResponse.json(script, { status: 201 })
   } catch (err) {
