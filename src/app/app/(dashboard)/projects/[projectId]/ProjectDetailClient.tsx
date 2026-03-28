@@ -9,8 +9,8 @@ import { NewScriptModal } from './NewScriptModal'
 import { ShareDialog } from '@/components/ui/ShareDialog'
 import { ScriptContextMenu } from '@/app/app/(dashboard)/ScriptContextMenu'
 
-const IMPORT_ACCEPT_ATTR = '.pdf,.txt'
-const SUPPORTED_IMPORT_EXTENSIONS = new Set(['pdf', 'txt'])
+const IMPORT_ACCEPT_ATTR = '.pdf,.txt,.fdx'
+const SUPPORTED_IMPORT_EXTENSIONS = new Set(['pdf', 'txt', 'fdx'])
 
 function getFileExtension(fileName: string): string | null {
   const match = fileName.toLowerCase().match(/\.([a-z0-9]+)$/)
@@ -119,7 +119,7 @@ export function ProjectDetailClient({
 
     const extension = getFileExtension(file.name)
     if (!extension || !SUPPORTED_IMPORT_EXTENSIONS.has(extension)) {
-      setImportError('Only .pdf and .txt imports are supported right now.')
+      setImportError('Only .pdf, .txt, and .fdx imports are supported right now.')
       return
     }
 
