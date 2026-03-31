@@ -96,6 +96,13 @@ export interface CursorAnchor {
   offset: number
 }
 
+export interface WritingPin {
+  scriptId: string
+  blockId: string
+  offset: number
+  setAt: string
+}
+
 // ─── Script ───────────────────────────────────────────────────────────────────
 
 export interface Script {

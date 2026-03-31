@@ -4,18 +4,11 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import {
-  $getRoot,
   $getSelection,
-  $isElementNode,
   $isRangeSelection,
-  $isTextNode,
-  type LexicalNode,
 } from 'lexical'
 import { getParentScreenplayBlock } from './blockTypeUtils'
-import { $isScreenplayBlockNode } from './nodes/ScreenplayBlockNode'
 import { useScriptStore } from '@/stores/scriptStore'
-import { scrollToBlock } from '@/lib/editor/scrollToBlock'
-import type { CursorAnchor } from '@/types/screenplay'
 
 type Side = 'above' | 'below' | null
 
@@ -32,59 +25,10 @@ export function CursorAnchorPlugin(): React.ReactElement | null {
   const focusedKeyRef = useRef<string | null>(null)
   const focusedBlockIdRef = useRef<string | null>(null)
   const containerRef = useRef<HTMLElement | null>(null)
-  const [returnHighlightBlockId, setReturnHighlightBlockId] = useState<string | null>(null)
   const jumpHighlightBlockId = useScriptStore((s) => s.jumpHighlightBlockId)
   const lastCursorAnchor = useScriptStore((s) => s.lastCursorAnchor)
-
-  function getFirstSelectableText(node: LexicalNode | null): LexicalNode | null {
-    if (!node) return null
-    if ($isTextNode(node)) return node
-    if ($isElementNode(node)) {
-      let child: LexicalNode | null = node.getFirstChild()
-      while (child) {
-        const found = getFirstSelectableText(child)
-        if (found) return found
-        child = child.getNextSibling()
-      }
-    }
-    return null
-  }
-
-  function restoreCursorSelection(anchor: CursorAnchor | null): string | null {
-    const targetBlockId = anchor?.blockId ?? focusedBlockIdRef.current
-    if (!targetBlockId) return null
-
-    let restored = false
-
-    editor.update(
-      () => {
-        const root = $getRoot()
-        for (const child of root.getChildren()) {
-          if (!$isScreenplayBlockNode(child)) continue
-          if (child.getBlockId() !== targetBlockId) continue
-
-          const textNode = getFirstSelectableText(child)
-          if (textNode && $isTextNode(textNode)) {
-            const maxOffset = textNode.getTextContent().length
-            const offset = anchor ? Math.max(0, Math.min(anchor.offset, maxOffset)) : maxOffset
-            textNode.select(offset, offset)
-          } else {
-            child.selectEnd()
-          }
-
-          restored = true
-          focusedKeyRef.current = child.getKey()
-          focusedBlockIdRef.current = child.getBlockId()
-          return
-        }
-      },
-      { discrete: true }
-    )
-
-    if (!restored) return null
-    editor.focus()
-    return targetBlockId
-  }
+  const setPendingCursorRestore = useScriptStore((s) => s.setPendingCursorRestore)
+  const setPendingCursorRestorePlacement = useScriptStore((s) => s.setPendingCursorRestorePlacement)
 
   function computePos(): ToastPos | null {
     const key = focusedKeyRef.current
@@ -181,47 +125,16 @@ export function CursorAnchorPlugin(): React.ReactElement | null {
     refresh()
   }, [jumpHighlightBlockId])
 
-  useEffect(() => {
-    if (!returnHighlightBlockId) return
-
-    const container = containerRef.current
-    if (!container) return
-
-    const el = container.querySelector(
-      `[data-block-id="${CSS.escape(returnHighlightBlockId)}"]`
-    ) as HTMLElement | null
-    if (!el) return
-
-    el.dataset.cursorReturnHighlight = 'true'
-
-    const timeout = window.setTimeout(() => {
-      if (el.dataset.cursorReturnHighlight) {
-        delete el.dataset.cursorReturnHighlight
-      }
-      setReturnHighlightBlockId((current) =>
-        current === returnHighlightBlockId ? null : current
-      )
-    }, 2000)
-
-    return () => {
-      window.clearTimeout(timeout)
-      if (el.dataset.cursorReturnHighlight) {
-        delete el.dataset.cursorReturnHighlight
-      }
-    }
-  }, [returnHighlightBlockId])
-
   if (!pos) return null
 
   return createPortal(
     <button
       onMouseDown={(e) => {
         e.preventDefault() // keep editor focus
-        const restoredBlockId = restoreCursorSelection(lastCursorAnchor)
-        if (!restoredBlockId) return
+        if (!lastCursorAnchor) return
 
-        scrollToBlock(restoredBlockId, { placement: 'center' })
-        setReturnHighlightBlockId(restoredBlockId)
+        setPendingCursorRestore(lastCursorAnchor)
+        setPendingCursorRestorePlacement('center')
       }}
       style={{
         position: 'fixed',

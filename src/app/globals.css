@@ -322,6 +322,45 @@
   word-break: break-word;
 }
 
+.writing-pin-hover {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  color: #a8a29e;
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  z-index: 1;
+  transition:
+    color 120ms ease,
+    background-color 120ms ease,
+    border-color 120ms ease,
+    opacity 120ms ease;
+  opacity: 0.82;
+}
+
+.writing-pin-hover:hover {
+  color: #57534e;
+  background: rgba(245, 245, 244, 0.98);
+  opacity: 1;
+}
+
+.writing-pin-hover.is-pinned {
+  color: #92400e;
+  background: rgba(254, 243, 199, 0.98);
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  opacity: 1;
+}
+
+.writing-pin-hover.is-pinned:hover {
+  color: #78350f;
+  background: rgba(253, 230, 138, 0.98);
+}
+
 /* ─── Scene Heading ───────────────────────────────────────────────────────── */
 
 .sp-scene-heading {
@@ -543,26 +582,16 @@
 
 .sp-block[data-cursor-return-highlight="true"] {
   position: relative;
-  background: rgba(59, 130, 246, 0.12);
-  box-shadow:
-    inset 3px 0 0 rgba(59, 130, 246, 0.9),
-    0 0 0 1px rgba(59, 130, 246, 0.18);
-  border-radius: 8px;
+  background: rgba(245, 158, 11, 0.14);
   animation: cursor-return-pulse 2s ease-out;
 }
 
 @keyframes cursor-return-pulse {
   0% {
-    background: rgba(59, 130, 246, 0.2);
-    box-shadow:
-      inset 3px 0 0 rgba(59, 130, 246, 1),
-      0 0 0 8px rgba(59, 130, 246, 0.16);
+    background: rgba(245, 158, 11, 0.22);
   }
   100% {
-    background: rgba(59, 130, 246, 0.12);
-    box-shadow:
-      inset 3px 0 0 rgba(59, 130, 246, 0.9),
-      0 0 0 1px rgba(59, 130, 246, 0.18);
+    background: transparent;
   }
 }
 

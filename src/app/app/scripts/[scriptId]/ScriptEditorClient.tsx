@@ -6,10 +6,12 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { ScreenplayEditor } from '@/components/editor/ScreenplayEditor'
 import { OutlinePanel } from '@/components/outline/OutlinePanel'
 import { SaveIndicator } from '@/components/ui/SaveIndicator'
+import { Dialog } from '@/components/ui/Dialog'
 import { ShareDialog } from '@/components/ui/ShareDialog'
 import { PresenceAvatars } from '@/components/ui/PresenceAvatars'
 import { RevisionPanel } from '@/components/ui/RevisionPanel'
 import { ScriptSearchControl } from '@/components/ui/ScriptSearchControl'
+import { PinIcon } from '@/components/ui/icons/PinIcon'
 import { useScriptStore } from '@/stores/scriptStore'
 import { usePresence } from '@/hooks/usePresence'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
@@ -37,11 +39,15 @@ export function ScriptEditorClient({
   const setLastCursorAnchor = useScriptStore((s) => s.setLastCursorAnchor)
   const setJumpHighlightBlockId = useScriptStore((s) => s.setJumpHighlightBlockId)
   const setPendingCursorRestore = useScriptStore((s) => s.setPendingCursorRestore)
+  const setPendingCursorRestorePlacement = useScriptStore((s) => s.setPendingCursorRestorePlacement)
   const setPendingExternalBlocks = useScriptStore((s) => s.setPendingExternalBlocks)
+  const hydrateWritingPin = useScriptStore((s) => s.hydrateWritingPin)
+  const writingPin = useScriptStore((s) => s.writingPin)
 
   const [outlineOpen, setOutlineOpen] = useState(true)
   const [shareOpen, setShareOpen] = useState(false)
   const [staleData, setStaleData] = useState(false)
+  const [confirmReturnOpen, setConfirmReturnOpen] = useState(false)
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -57,6 +63,10 @@ export function ScriptEditorClient({
   useEffect(() => {
     return () => setScript(null)
   }, [setScript])
+
+  useEffect(() => {
+    hydrateWritingPin()
+  }, [hydrateWritingPin])
 
   // Presence + cursor tracking
   const { presences, broadcastCursor } = usePresence(script.id, {
@@ -133,23 +143,23 @@ export function ScriptEditorClient({
         blockId: restoreCursorBlock,
         offset: Number.isFinite(restoreCursorOffset) ? restoreCursorOffset : 0,
       })
+      setPendingCursorRestorePlacement('center-if-needed')
     }
 
     let cancelled = false
     let attempts = 0
-    const targetBlockId = focusBlockId ?? restoreCursorBlock
-    const scrollPlacement = focusBlockId ? 'search-result' : 'center'
+    const targetBlockId = focusBlockId
 
     const tryScroll = () => {
       if (cancelled || !targetBlockId) return
-      if (scrollToBlock(targetBlockId, { placement: scrollPlacement })) return
+      if (scrollToBlock(targetBlockId, { placement: 'search-result' })) return
       attempts += 1
       if (attempts < 20) {
         window.setTimeout(tryScroll, 120)
       }
     }
 
-    const timer = window.setTimeout(tryScroll, 80)
+    const timer = targetBlockId ? window.setTimeout(tryScroll, 80) : null
 
     const params = new URLSearchParams(searchParams.toString())
     params.delete('focusBlock')
@@ -160,9 +170,46 @@ export function ScriptEditorClient({
 
     return () => {
       cancelled = true
-      window.clearTimeout(timer)
+      if (timer !== null) window.clearTimeout(timer)
     }
-  }, [pathname, router, searchParams, setJumpHighlightBlockId, setPendingCursorRestore])
+  }, [
+    pathname,
+    router,
+    searchParams,
+    setJumpHighlightBlockId,
+    setPendingCursorRestore,
+    setPendingCursorRestorePlacement,
+  ])
+
+  const handleReturnToWriting = useCallback(() => {
+    if (!writingPin) return
+
+    const target = new URLSearchParams()
+    target.set('restoreCursorBlock', writingPin.blockId)
+    target.set('restoreCursorOffset', String(writingPin.offset))
+
+    const href = `/app/scripts/${writingPin.scriptId}?${target.toString()}`
+
+    if (writingPin.scriptId === script.id) {
+      router.replace(href, { scroll: false })
+      return
+    }
+
+    setConfirmReturnOpen(true)
+  }, [router, script.id, writingPin])
+
+  const confirmReturnToWriting = useCallback(() => {
+    if (!writingPin || writingPin.scriptId === script.id) {
+      setConfirmReturnOpen(false)
+      return
+    }
+
+    const target = new URLSearchParams()
+    target.set('restoreCursorBlock', writingPin.blockId)
+    target.set('restoreCursorOffset', String(writingPin.offset))
+    setConfirmReturnOpen(false)
+    router.push(`/app/scripts/${writingPin.scriptId}?${target.toString()}`)
+  }, [router, script.id, writingPin])
 
   return (
     <div className="editor-root">
@@ -235,6 +282,21 @@ export function ScriptEditorClient({
             projectId={script.projectId}
             currentScriptId={script.id}
           />
+
+          <button
+            type="button"
+            disabled={!writingPin}
+            onClick={handleReturnToWriting}
+            className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+              writingPin
+                ? 'border-amber-200 bg-amber-50 text-amber-900'
+                : 'border-stone-200 bg-stone-50 text-stone-400 opacity-70 cursor-not-allowed'
+            }`}
+            title={writingPin ? 'Return to writing' : 'Set a writing pin to enable'}
+          >
+            <PinIcon size={16} />
+            Return to writing
+          </button>
 
           {/* Presence avatars */}
           <PresenceAvatars presences={presences} currentUserId={userId} />
@@ -326,6 +388,38 @@ export function ScriptEditorClient({
           />
         </main>
       </div>
+
+      <Dialog open={confirmReturnOpen} onClose={() => setConfirmReturnOpen(false)}>
+        <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-2xl">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-amber-50 text-amber-800">
+              <PinIcon size={18} />
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-base font-semibold text-gray-900">Return to writing?</h2>
+              <p className="mt-2 text-sm leading-6 text-gray-600">
+                This will open another script and move your cursor back to the writing pin.
+              </p>
+            </div>
+          </div>
+          <div className="mt-6 flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setConfirmReturnOpen(false)}
+              className="rounded-lg border border-stone-200 px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-stone-50 hover:text-gray-900"
+            >
+              Stay here
+            </button>
+            <button
+              type="button"
+              onClick={confirmReturnToWriting}
+              className="rounded-lg bg-amber-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-amber-800"
+            >
+              Open script
+            </button>
+          </div>
+        </div>
+      </Dialog>
 
       {/* ── Status bar ─────────────────────────────────────────────────────── */}
       <div className="sp-status-bar">

@@ -36,8 +36,10 @@ import { useScriptStore } from '@/stores/scriptStore'
 import { DevToolsPlugin } from './DevToolsPlugin'
 import { RevisionMarkPlugin } from './RevisionMarkPlugin'
 import { CursorAnchorPlugin } from './CursorAnchorPlugin'
+import { WritingPinPlugin } from './WritingPinPlugin'
 import { getParentScreenplayBlock } from './blockTypeUtils'
 import { $isScreenplayBlockNode } from './nodes/ScreenplayBlockNode'
+import { scrollToBlock } from '@/lib/editor/scrollToBlock'
 import type { Block } from '@/types/screenplay'
 import type { PresenceUser } from '@/hooks/usePresence'
 
@@ -323,7 +325,9 @@ function getFirstSelectableText(node: LexicalNode | null): LexicalNode | null {
 function CursorRestorePlugin(): null {
   const [editor] = useLexicalComposerContext()
   const pendingCursorRestore = useScriptStore((s) => s.pendingCursorRestore)
+  const pendingCursorRestorePlacement = useScriptStore((s) => s.pendingCursorRestorePlacement)
   const clearPendingCursorRestore = useScriptStore((s) => s.clearPendingCursorRestore)
+  const setCursorReturnHighlightBlockId = useScriptStore((s) => s.setCursorReturnHighlightBlockId)
 
   useEffect(() => {
     if (!pendingCursorRestore) return
@@ -360,6 +364,12 @@ function CursorRestorePlugin(): null {
 
       if (restored) {
         editor.focus()
+        window.requestAnimationFrame(() => {
+          scrollToBlock(pendingCursorRestore.blockId, {
+            placement: pendingCursorRestorePlacement ?? 'center',
+          })
+          setCursorReturnHighlightBlockId(pendingCursorRestore.blockId)
+        })
         clearPendingCursorRestore()
         return
       }
@@ -375,7 +385,52 @@ function CursorRestorePlugin(): null {
       cancelled = true
       window.clearTimeout(timer)
     }
-  }, [clearPendingCursorRestore, editor, pendingCursorRestore])
+  }, [
+    clearPendingCursorRestore,
+    editor,
+    pendingCursorRestore,
+    pendingCursorRestorePlacement,
+    setCursorReturnHighlightBlockId,
+  ])
+
+  return null
+}
+
+function CursorReturnHighlightPlugin(): null {
+  const [editor] = useLexicalComposerContext()
+  const cursorReturnHighlightBlockId = useScriptStore((s) => s.cursorReturnHighlightBlockId)
+  const clearCursorReturnHighlight = useScriptStore((s) => s.clearCursorReturnHighlight)
+
+  useEffect(() => {
+    if (!cursorReturnHighlightBlockId) return
+
+    const editorRoot = editor.getRootElement()
+    if (!editorRoot) return
+
+    const container = editorRoot.closest('.editor-main') as HTMLElement | null
+    if (!container) return
+
+    const el = container.querySelector(
+      `[data-block-id="${CSS.escape(cursorReturnHighlightBlockId)}"]`
+    ) as HTMLElement | null
+    if (!el) return
+
+    el.dataset.cursorReturnHighlight = 'true'
+
+    const timeout = window.setTimeout(() => {
+      if (el.dataset.cursorReturnHighlight) {
+        delete el.dataset.cursorReturnHighlight
+      }
+      clearCursorReturnHighlight()
+    }, 2000)
+
+    return () => {
+      window.clearTimeout(timeout)
+      if (el.dataset.cursorReturnHighlight) {
+        delete el.dataset.cursorReturnHighlight
+      }
+    }
+  }, [clearCursorReturnHighlight, cursorReturnHighlightBlockId, editor])
 
   return null
 }
@@ -473,7 +528,9 @@ export function ScreenplayEditor({
         <FocusedBlockPlugin />
         <JumpHighlightPlugin />
         <CursorRestorePlugin />
+        <CursorReturnHighlightPlugin />
         <CursorAnchorPlugin />
+        {!readOnly && scriptId && <WritingPinPlugin scriptId={scriptId} />}
         {!readOnly && scriptId && <AutosavePlugin scriptId={scriptId} />}
         <RevisionMarkPlugin />
         {!readOnly && collaboration && (

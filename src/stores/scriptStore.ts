@@ -1,6 +1,32 @@
 import { create } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
-import type { Block, Script, RevisionSet, BlockDiff, CursorAnchor } from '@/types/screenplay'
+import type { Block, Script, RevisionSet, BlockDiff, CursorAnchor, WritingPin } from '@/types/screenplay'
+import type { ScrollPlacement } from '@/lib/editor/scrollToBlock'
+
+const WRITING_PIN_SESSION_KEY = 'screenwriting-writing-pin'
+
+function readStoredWritingPin(): WritingPin | null {
+  if (typeof window === 'undefined') return null
+
+  try {
+    const raw = window.sessionStorage.getItem(WRITING_PIN_SESSION_KEY)
+    if (!raw) return null
+    return JSON.parse(raw) as WritingPin
+  } catch {
+    return null
+  }
+}
+
+function writeStoredWritingPin(pin: WritingPin | null) {
+  if (typeof window === 'undefined') return
+
+  if (!pin) {
+    window.sessionStorage.removeItem(WRITING_PIN_SESSION_KEY)
+    return
+  }
+
+  window.sessionStorage.setItem(WRITING_PIN_SESSION_KEY, JSON.stringify(pin))
+}
 
 // ─── Autosave status ──────────────────────────────────────────────────────────
 
@@ -35,6 +61,11 @@ interface ScriptState {
 
   // Pending cursor restore request after cross-script navigation.
   pendingCursorRestore: CursorAnchor | null
+  pendingCursorRestorePlacement: ScrollPlacement | null
+  cursorReturnHighlightBlockId: string | null
+
+  // The single session-scoped writing pin across scripts.
+  writingPin: WritingPin | null
 
   // Blocks received from a real-time peer update. When set, the
   // RealtimeBlockLoaderPlugin inside Lexical loads them and clears this field.
@@ -71,7 +102,13 @@ interface ScriptActions {
   setJumpHighlightBlockId: (id: string | null) => void
   clearJumpHighlight: () => void
   setPendingCursorRestore: (cursor: CursorAnchor | null) => void
+  setPendingCursorRestorePlacement: (placement: ScrollPlacement | null) => void
   clearPendingCursorRestore: () => void
+  setCursorReturnHighlightBlockId: (id: string | null) => void
+  clearCursorReturnHighlight: () => void
+  hydrateWritingPin: () => void
+  setWritingPin: (pin: WritingPin) => void
+  clearWritingPin: () => void
   setPendingExternalBlocks: (blocks: Block[] | null) => void
   setLastOwnSavedAt: (t: string | null) => void
   setActiveRevisionSet: (rs: RevisionSet | null) => void
@@ -92,6 +129,9 @@ const initialState: ScriptState = {
   lastCursorAnchor: null,
   jumpHighlightBlockId: null,
   pendingCursorRestore: null,
+  pendingCursorRestorePlacement: null,
+  cursorReturnHighlightBlockId: null,
+  writingPin: null,
   pendingExternalBlocks: null,
   lastOwnSavedAt: null,
   activeRevisionSet: null,
@@ -118,6 +158,8 @@ export const useScriptStore = create<ScriptState & ScriptActions>()(
           state.lastCursorAnchor = null
           state.jumpHighlightBlockId = null
           state.pendingCursorRestore = null
+          state.pendingCursorRestorePlacement = null
+          state.cursorReturnHighlightBlockId = null
         }
         if (script !== null) state.revisionPanelOpen = false
       }),
@@ -162,10 +204,45 @@ export const useScriptStore = create<ScriptState & ScriptActions>()(
         state.pendingCursorRestore = cursor
       }),
 
+    setPendingCursorRestorePlacement: (placement) =>
+      set((state) => {
+        state.pendingCursorRestorePlacement = placement
+      }),
+
     clearPendingCursorRestore: () =>
       set((state) => {
         state.pendingCursorRestore = null
+        state.pendingCursorRestorePlacement = null
       }),
+
+    setCursorReturnHighlightBlockId: (id) =>
+      set((state) => {
+        state.cursorReturnHighlightBlockId = id
+      }),
+
+    clearCursorReturnHighlight: () =>
+      set((state) => {
+        state.cursorReturnHighlightBlockId = null
+      }),
+
+    hydrateWritingPin: () =>
+      set((state) => {
+        state.writingPin = readStoredWritingPin()
+      }),
+
+    setWritingPin: (pin) => {
+      writeStoredWritingPin(pin)
+      set((state) => {
+        state.writingPin = pin
+      })
+    },
+
+    clearWritingPin: () => {
+      writeStoredWritingPin(null)
+      set((state) => {
+        state.writingPin = null
+      })
+    },
 
     setPendingExternalBlocks: (blocks) =>
       set((state) => {
