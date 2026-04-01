@@ -67,6 +67,9 @@ interface ScriptState {
   // The single session-scoped writing pin across scripts.
   writingPin: WritingPin | null
 
+  // Lightweight editor notice for recoverable UI events.
+  editorNotice: string | null
+
   // Blocks received from a real-time peer update. When set, the
   // RealtimeBlockLoaderPlugin inside Lexical loads them and clears this field.
   pendingExternalBlocks: Block[] | null
@@ -109,6 +112,8 @@ interface ScriptActions {
   hydrateWritingPin: () => void
   setWritingPin: (pin: WritingPin) => void
   clearWritingPin: () => void
+  setEditorNotice: (message: string | null) => void
+  clearEditorNotice: () => void
   setPendingExternalBlocks: (blocks: Block[] | null) => void
   setLastOwnSavedAt: (t: string | null) => void
   setActiveRevisionSet: (rs: RevisionSet | null) => void
@@ -132,6 +137,7 @@ const initialState: ScriptState = {
   pendingCursorRestorePlacement: null,
   cursorReturnHighlight: null,
   writingPin: null,
+  editorNotice: null,
   pendingExternalBlocks: null,
   lastOwnSavedAt: null,
   activeRevisionSet: null,
@@ -243,6 +249,16 @@ export const useScriptStore = create<ScriptState & ScriptActions>()(
         state.writingPin = null
       })
     },
+
+    setEditorNotice: (message) =>
+      set((state) => {
+        state.editorNotice = message
+      }),
+
+    clearEditorNotice: () =>
+      set((state) => {
+        state.editorNotice = null
+      }),
 
     setPendingExternalBlocks: (blocks) =>
       set((state) => {

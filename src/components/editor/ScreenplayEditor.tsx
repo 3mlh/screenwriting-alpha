@@ -327,7 +327,10 @@ function CursorRestorePlugin(): null {
   const [editor] = useLexicalComposerContext()
   const pendingCursorRestore = useScriptStore((s) => s.pendingCursorRestore)
   const pendingCursorRestorePlacement = useScriptStore((s) => s.pendingCursorRestorePlacement)
+  const writingPin = useScriptStore((s) => s.writingPin)
   const clearPendingCursorRestore = useScriptStore((s) => s.clearPendingCursorRestore)
+  const clearWritingPin = useScriptStore((s) => s.clearWritingPin)
+  const setEditorNotice = useScriptStore((s) => s.setEditorNotice)
   const triggerCursorReturnHighlight = useScriptStore((s) => s.triggerCursorReturnHighlight)
 
   useEffect(() => {
@@ -378,7 +381,15 @@ function CursorRestorePlugin(): null {
       attempts += 1
       if (attempts < 20) {
         window.setTimeout(restoreSelection, 120)
+        return
       }
+
+      if (writingPin?.blockId === pendingCursorRestore.blockId) {
+        clearWritingPin()
+        setEditorNotice('Your writing pin is no longer available.')
+      }
+
+      clearPendingCursorRestore()
     }
 
     const timer = window.setTimeout(restoreSelection, 80)
@@ -388,10 +399,13 @@ function CursorRestorePlugin(): null {
     }
   }, [
     clearPendingCursorRestore,
+    clearWritingPin,
     editor,
     pendingCursorRestore,
     pendingCursorRestorePlacement,
+    setEditorNotice,
     triggerCursorReturnHighlight,
+    writingPin,
   ])
 
   return null

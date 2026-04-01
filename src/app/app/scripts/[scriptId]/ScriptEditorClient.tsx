@@ -42,7 +42,12 @@ export function ScriptEditorClient({
   const setPendingCursorRestorePlacement = useScriptStore((s) => s.setPendingCursorRestorePlacement)
   const setPendingExternalBlocks = useScriptStore((s) => s.setPendingExternalBlocks)
   const hydrateWritingPin = useScriptStore((s) => s.hydrateWritingPin)
+  const blocks = useScriptStore((s) => s.blocks)
   const writingPin = useScriptStore((s) => s.writingPin)
+  const editorNotice = useScriptStore((s) => s.editorNotice)
+  const setEditorNotice = useScriptStore((s) => s.setEditorNotice)
+  const clearEditorNotice = useScriptStore((s) => s.clearEditorNotice)
+  const clearWritingPin = useScriptStore((s) => s.clearWritingPin)
 
   const [outlineOpen, setOutlineOpen] = useState(true)
   const [shareOpen, setShareOpen] = useState(false)
@@ -67,6 +72,11 @@ export function ScriptEditorClient({
   useEffect(() => {
     hydrateWritingPin()
   }, [hydrateWritingPin])
+
+  useEffect(() => {
+    if (!editorNotice) return
+    setConfirmReturnOpen(false)
+  }, [clearEditorNotice, editorNotice])
 
   // Presence + cursor tracking
   const { presences, broadcastCursor } = usePresence(script.id, {
@@ -184,6 +194,15 @@ export function ScriptEditorClient({
   const handleReturnToWriting = useCallback(() => {
     if (!writingPin) return
 
+    if (
+      writingPin.scriptId === script.id &&
+      !blocks.some((block) => block.id === writingPin.blockId)
+    ) {
+      clearWritingPin()
+      setEditorNotice('Your writing pin is no longer available.')
+      return
+    }
+
     const target = new URLSearchParams()
     target.set('restoreCursorBlock', writingPin.blockId)
     target.set('restoreCursorOffset', String(writingPin.offset))
@@ -196,7 +215,7 @@ export function ScriptEditorClient({
     }
 
     setConfirmReturnOpen(true)
-  }, [router, script.id, writingPin])
+  }, [blocks, clearWritingPin, router, script.id, setEditorNotice, writingPin])
 
   const confirmReturnToWriting = useCallback(() => {
     if (!writingPin || writingPin.scriptId === script.id) {
@@ -416,6 +435,31 @@ export function ScriptEditorClient({
               className="rounded-lg bg-amber-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-amber-800"
             >
               Open script
+            </button>
+          </div>
+        </div>
+      </Dialog>
+
+      <Dialog open={Boolean(editorNotice)} onClose={clearEditorNotice}>
+        <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-2xl">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-amber-50 text-amber-800">
+              <PinIcon size={18} />
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-base font-semibold text-gray-900">Writing pin unavailable</h2>
+              <p className="mt-2 text-sm leading-6 text-gray-600">
+                {editorNotice}
+              </p>
+            </div>
+          </div>
+          <div className="mt-6 flex justify-end">
+            <button
+              type="button"
+              onClick={clearEditorNotice}
+              className="rounded-lg bg-amber-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-amber-800"
+            >
+              OK
             </button>
           </div>
         </div>
