@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect } from 'react'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { ContentEditable } from '@lexical/react/LexicalContentEditable'
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
@@ -10,9 +10,7 @@ import LexicalErrorBoundary from '@lexical/react/LexicalErrorBoundary'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import type { EditorState, LexicalNode } from 'lexical'
 import {
-  COMMAND_PRIORITY_LOW,
   COMMAND_PRIORITY_HIGH,
-  KEY_DOWN_COMMAND,
   PASTE_COMMAND,
   $createTextNode,
   $getRoot,

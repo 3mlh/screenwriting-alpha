@@ -24,7 +24,6 @@ function normalizeInputs(input: unknown): string[] {
     .filter((value): value is string => typeof value === 'string')
     .map((value) => value.trim())
     .filter((value) => value.length > 0)
-    .slice(0, MAX_INPUTS)
 }
 
 Deno.serve(async (request) => {
@@ -38,6 +37,10 @@ Deno.serve(async (request) => {
 
     if (inputs.length === 0) {
       return json({ error: 'At least one input is required' }, 400)
+    }
+
+    if (inputs.length > MAX_INPUTS) {
+      return json({ error: `At most ${MAX_INPUTS} inputs are allowed per request` }, 400)
     }
 
     const embeddings = await Promise.all(

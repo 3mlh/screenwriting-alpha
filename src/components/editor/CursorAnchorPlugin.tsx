@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import {
@@ -30,7 +30,7 @@ export function CursorAnchorPlugin(): React.ReactElement | null {
   const setPendingCursorRestore = useScriptStore((s) => s.setPendingCursorRestore)
   const setPendingCursorRestorePlacement = useScriptStore((s) => s.setPendingCursorRestorePlacement)
 
-  function computePos(): ToastPos | null {
+  const computePos = useCallback((): ToastPos | null => {
     const key = focusedKeyRef.current
     if (!key) return null
 
@@ -79,11 +79,11 @@ export function CursorAnchorPlugin(): React.ReactElement | null {
       topY: cRect.top + blockBarH + 8,
       bottomY: window.innerHeight - cRect.bottom + 8,
     }
-  }
+  }, [editor, jumpHighlightBlockId])
 
-  function refresh() {
+  const refresh = useCallback(() => {
     setPos(computePos())
-  }
+  }, [computePos])
 
   // Track focused block key on every editor state change
   useEffect(() => {
@@ -101,8 +101,7 @@ export function CursorAnchorPlugin(): React.ReactElement | null {
       })
       refresh()
     })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editor])
+  }, [editor, refresh])
 
   // Attach scroll listener and cache container ref once editor mounts
   useEffect(() => {
@@ -118,12 +117,11 @@ export function CursorAnchorPlugin(): React.ReactElement | null {
       container.removeEventListener('scroll', refresh)
       window.removeEventListener('resize', refresh)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editor])
+  }, [editor, refresh])
 
   useEffect(() => {
     refresh()
-  }, [jumpHighlightBlockId])
+  }, [jumpHighlightBlockId, refresh])
 
   if (!pos) return null
 
