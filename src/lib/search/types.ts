@@ -8,6 +8,8 @@ export interface SearchIndexChunkInput {
   normalizedText: string
   searchText: string
   semanticText?: string
+  semanticEmbedding?: number[]
+  semanticIndexedAt?: string
   actLabel?: string
   actNormalized?: string
   sceneLabel?: string

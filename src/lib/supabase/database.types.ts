@@ -463,6 +463,23 @@ export interface Database {
           token_hits: number
         }[]
       }
+      search_project_script_candidates_semantic: {
+        Args: { p_project_id: string; p_user_id: string; p_query_embedding: number[]; p_limit?: number }
+        Returns: {
+          script_id: string
+          script_title: string
+          block_id: string
+          block_type: string
+          block_text: string
+          act_label: string | null
+          scene_label: string | null
+          speaker: string | null
+          block_position: number
+          retrieval_score: number
+          exact_match: boolean
+          token_hits: number
+        }[]
+      }
       lookup_user_by_email: {
         Args: { p_email: string }
         Returns: { user_id: string; display_name: string }[]

@@ -2,6 +2,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database, Json } from '@/lib/supabase/database.types'
 import type { Block } from '@/types/screenplay'
 import type { SearchIndexChunkInput } from './types'
+import { generateSearchEmbeddings } from './semantic.server'
+import { isLocalSearchSemanticDisabled } from './semantic'
 
 type AppSupabaseClient = SupabaseClient<Database>
 
@@ -223,6 +225,8 @@ export function serializeSearchChunksForRpc(rows: SearchIndexChunkInput[]): Json
     normalized_text: row.normalizedText,
     search_text: row.searchText,
     semantic_text: row.semanticText ?? null,
+    semantic_embedding: row.semanticEmbedding ?? null,
+    semantic_indexed_at: row.semanticIndexedAt ?? null,
     act_label: row.actLabel ?? null,
     act_normalized: row.actNormalized ?? null,
     scene_label: row.sceneLabel ?? null,
@@ -237,13 +241,37 @@ export function serializeSearchChunksForRpc(rows: SearchIndexChunkInput[]): Json
   })) as Json
 }
 
+async function attachSearchEmbeddings(
+  supabase: AppSupabaseClient,
+  rows: SearchIndexChunkInput[]
+): Promise<SearchIndexChunkInput[]> {
+  if (isLocalSearchSemanticDisabled()) return rows
+
+  const semanticInputs = rows.map((row) => row.semanticText ?? '')
+  if (semanticInputs.every((input) => input.trim().length === 0)) return rows
+
+  try {
+    const embeddings = await generateSearchEmbeddings(supabase, semanticInputs)
+    const indexedAt = new Date().toISOString()
+
+    return rows.map((row, index) => ({
+      ...row,
+      semanticEmbedding: embeddings[index],
+      semanticIndexedAt: embeddings[index] ? indexedAt : undefined,
+    }))
+  } catch (error) {
+    console.error('Failed to generate search embeddings:', error)
+    return rows
+  }
+}
+
 export async function replaceScriptSearchChunks(
   supabase: AppSupabaseClient,
   userId: string,
   scriptId: string,
   blocks: Block[]
 ): Promise<void> {
-  const rows = buildScriptSearchChunks(blocks)
+  const rows = await attachSearchEmbeddings(supabase, buildScriptSearchChunks(blocks))
   const { error } = await supabase.rpc('replace_script_search_chunks', {
     p_script_id: scriptId,
     p_user_id: userId,

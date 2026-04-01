@@ -2,6 +2,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/lib/supabase/database.types'
 import type { ScriptSearchResult, SearchCandidate, SearchQueryAnalysis, SearchRetrievalInput } from './types'
 import { normalizeForSearch } from './index'
+import { generateSearchEmbeddings } from './semantic.server'
+import { isLocalSearchSemanticDisabled } from './semantic'
 
 type AppSupabaseClient = SupabaseClient<Database>
 
@@ -246,12 +248,43 @@ async function fetchLexicalSearchCandidates(
 }
 
 async function fetchSemanticSearchCandidates(
-  _supabase: AppSupabaseClient,
+  supabase: AppSupabaseClient,
   input: SearchRetrievalInput
 ): Promise<SearchCandidate[]> {
+  if (isLocalSearchSemanticDisabled()) return []
   if (!input.analysis.semanticQuery) return []
   if (!hasDistinctSemanticQuery(input.analysis)) return []
-  return []
+
+  const [queryEmbedding] = await generateSearchEmbeddings(supabase, [input.analysis.semanticQuery])
+  if (!queryEmbedding) return []
+
+  const candidateLimit = Math.max(input.limit * 5, 25)
+  const { data, error } = await supabase.rpc('search_project_script_candidates_semantic', {
+    p_project_id: input.projectId,
+    p_user_id: input.userId,
+    p_query_embedding: queryEmbedding,
+    p_limit: candidateLimit,
+  })
+
+  if (error) throw error
+
+  return ((data ?? []) as Database['public']['Functions']['search_project_script_candidates_semantic']['Returns']).map(
+    (row): SearchCandidate => ({
+      scriptId: row.script_id,
+      scriptTitle: row.script_title,
+      blockId: row.block_id,
+      blockType: row.block_type,
+      blockText: row.block_text,
+      actLabel: row.act_label,
+      sceneLabel: row.scene_label,
+      speaker: row.speaker,
+      position: row.block_position,
+      retrievalScore: row.retrieval_score,
+      exactMatch: row.exact_match,
+      tokenHits: row.token_hits,
+      retrievalSource: 'semantic',
+    })
+  )
 }
 
 export async function searchProjectScripts(
