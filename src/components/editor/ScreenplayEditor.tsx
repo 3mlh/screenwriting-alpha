@@ -37,6 +37,7 @@ import { DevToolsPlugin } from './DevToolsPlugin'
 import { RevisionMarkPlugin } from './RevisionMarkPlugin'
 import { CursorAnchorPlugin } from './CursorAnchorPlugin'
 import { WritingPinPlugin } from './WritingPinPlugin'
+import { WritingPinAutoFollowPlugin } from './WritingPinAutoFollowPlugin'
 import { getParentScreenplayBlock } from './blockTypeUtils'
 import { $isScreenplayBlockNode } from './nodes/ScreenplayBlockNode'
 import { scrollToBlock } from '@/lib/editor/scrollToBlock'
@@ -521,6 +522,7 @@ export function ScreenplayEditor({
         <HistoryPlugin />
         <OnChangePlugin onChange={onChange} ignoreSelectionChange />
         <InitialStatePlugin initialBlocks={initialBlocks} />
+        {!readOnly && scriptId && <WritingPinAutoFollowPlugin scriptId={scriptId} />}
         {!readOnly && <BlockTypePlugin />}
         {!readOnly && <AutoBlockTypePlugin />}
         {!readOnly && <PasteNormalizerPlugin />}
