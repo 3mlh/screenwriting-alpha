@@ -327,7 +327,7 @@ function CursorRestorePlugin(): null {
   const pendingCursorRestore = useScriptStore((s) => s.pendingCursorRestore)
   const pendingCursorRestorePlacement = useScriptStore((s) => s.pendingCursorRestorePlacement)
   const clearPendingCursorRestore = useScriptStore((s) => s.clearPendingCursorRestore)
-  const setCursorReturnHighlightBlockId = useScriptStore((s) => s.setCursorReturnHighlightBlockId)
+  const triggerCursorReturnHighlight = useScriptStore((s) => s.triggerCursorReturnHighlight)
 
   useEffect(() => {
     if (!pendingCursorRestore) return
@@ -368,7 +368,7 @@ function CursorRestorePlugin(): null {
           scrollToBlock(pendingCursorRestore.blockId, {
             placement: pendingCursorRestorePlacement ?? 'center',
           })
-          setCursorReturnHighlightBlockId(pendingCursorRestore.blockId)
+          triggerCursorReturnHighlight(pendingCursorRestore.blockId)
         })
         clearPendingCursorRestore()
         return
@@ -390,7 +390,7 @@ function CursorRestorePlugin(): null {
     editor,
     pendingCursorRestore,
     pendingCursorRestorePlacement,
-    setCursorReturnHighlightBlockId,
+    triggerCursorReturnHighlight,
   ])
 
   return null
@@ -398,11 +398,11 @@ function CursorRestorePlugin(): null {
 
 function CursorReturnHighlightPlugin(): null {
   const [editor] = useLexicalComposerContext()
-  const cursorReturnHighlightBlockId = useScriptStore((s) => s.cursorReturnHighlightBlockId)
+  const cursorReturnHighlight = useScriptStore((s) => s.cursorReturnHighlight)
   const clearCursorReturnHighlight = useScriptStore((s) => s.clearCursorReturnHighlight)
 
   useEffect(() => {
-    if (!cursorReturnHighlightBlockId) return
+    if (!cursorReturnHighlight) return
 
     const editorRoot = editor.getRootElement()
     if (!editorRoot) return
@@ -411,7 +411,7 @@ function CursorReturnHighlightPlugin(): null {
     if (!container) return
 
     const el = container.querySelector(
-      `[data-block-id="${CSS.escape(cursorReturnHighlightBlockId)}"]`
+      `[data-block-id="${CSS.escape(cursorReturnHighlight.blockId)}"]`
     ) as HTMLElement | null
     if (!el) return
 
@@ -430,7 +430,7 @@ function CursorReturnHighlightPlugin(): null {
         delete el.dataset.cursorReturnHighlight
       }
     }
-  }, [clearCursorReturnHighlight, cursorReturnHighlightBlockId, editor])
+  }, [clearCursorReturnHighlight, cursorReturnHighlight, editor])
 
   return null
 }

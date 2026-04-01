@@ -62,7 +62,7 @@ interface ScriptState {
   // Pending cursor restore request after cross-script navigation.
   pendingCursorRestore: CursorAnchor | null
   pendingCursorRestorePlacement: ScrollPlacement | null
-  cursorReturnHighlightBlockId: string | null
+  cursorReturnHighlight: { blockId: string; nonce: number } | null
 
   // The single session-scoped writing pin across scripts.
   writingPin: WritingPin | null
@@ -104,7 +104,7 @@ interface ScriptActions {
   setPendingCursorRestore: (cursor: CursorAnchor | null) => void
   setPendingCursorRestorePlacement: (placement: ScrollPlacement | null) => void
   clearPendingCursorRestore: () => void
-  setCursorReturnHighlightBlockId: (id: string | null) => void
+  triggerCursorReturnHighlight: (blockId: string) => void
   clearCursorReturnHighlight: () => void
   hydrateWritingPin: () => void
   setWritingPin: (pin: WritingPin) => void
@@ -130,7 +130,7 @@ const initialState: ScriptState = {
   jumpHighlightBlockId: null,
   pendingCursorRestore: null,
   pendingCursorRestorePlacement: null,
-  cursorReturnHighlightBlockId: null,
+  cursorReturnHighlight: null,
   writingPin: null,
   pendingExternalBlocks: null,
   lastOwnSavedAt: null,
@@ -159,7 +159,7 @@ export const useScriptStore = create<ScriptState & ScriptActions>()(
           state.jumpHighlightBlockId = null
           state.pendingCursorRestore = null
           state.pendingCursorRestorePlacement = null
-          state.cursorReturnHighlightBlockId = null
+          state.cursorReturnHighlight = null
         }
         if (script !== null) state.revisionPanelOpen = false
       }),
@@ -215,14 +215,14 @@ export const useScriptStore = create<ScriptState & ScriptActions>()(
         state.pendingCursorRestorePlacement = null
       }),
 
-    setCursorReturnHighlightBlockId: (id) =>
+    triggerCursorReturnHighlight: (blockId) =>
       set((state) => {
-        state.cursorReturnHighlightBlockId = id
+        state.cursorReturnHighlight = { blockId, nonce: Date.now() }
       }),
 
     clearCursorReturnHighlight: () =>
       set((state) => {
-        state.cursorReturnHighlightBlockId = null
+        state.cursorReturnHighlight = null
       }),
 
     hydrateWritingPin: () =>
