@@ -1,7 +1,7 @@
 -- ── 015: Private script search index + candidate retrieval ───────────────────
 
 CREATE TABLE public.script_search_chunks (
-  id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id                UUID PRIMARY KEY DEFAULT pg_catalog.gen_random_uuid(),
   project_id        UUID NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
   script_id         UUID NOT NULL REFERENCES public.scripts(id) ON DELETE CASCADE,
   block_id          UUID NOT NULL,

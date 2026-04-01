@@ -7,6 +7,9 @@ ALTER TABLE public.script_search_chunks
   ADD COLUMN IF NOT EXISTS act_label TEXT,
   ADD COLUMN IF NOT EXISTS act_normalized TEXT;
 
+DROP FUNCTION IF EXISTS public.search_project_script_candidates(UUID, TEXT, INTEGER);
+DROP FUNCTION IF EXISTS public.search_project_script_candidates(UUID, UUID, TEXT, INTEGER);
+
 CREATE OR REPLACE FUNCTION public.replace_script_search_chunks(
   p_script_id UUID,
   p_user_id UUID,
