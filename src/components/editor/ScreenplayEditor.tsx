@@ -232,83 +232,6 @@ function FocusedBlockPlugin(): null {
   return null
 }
 
-function JumpHighlightPlugin(): null {
-  const [editor] = useLexicalComposerContext()
-  const jumpHighlightBlockId = useScriptStore((s) => s.jumpHighlightBlockId)
-  const clearJumpHighlight = useScriptStore((s) => s.clearJumpHighlight)
-  const animatedBlockIdRef = useRef<string | null>(null)
-
-  useEffect(() => {
-    function restartHighlightAnimation(dom: HTMLElement) {
-      dom.style.animation = 'none'
-      void dom.offsetWidth
-      dom.style.animation = ''
-    }
-
-    function applyHighlight() {
-      editor.getEditorState().read(() => {
-        const root = $getRoot()
-        for (const child of root.getChildren()) {
-          if (!$isScreenplayBlockNode(child)) continue
-          const dom = editor.getElementByKey(child.getKey()) as HTMLElement | null
-          if (!dom) continue
-
-          if (jumpHighlightBlockId && child.getBlockId() === jumpHighlightBlockId) {
-            dom.dataset.jumpHighlight = 'true'
-            if (animatedBlockIdRef.current !== jumpHighlightBlockId) {
-              restartHighlightAnimation(dom)
-              animatedBlockIdRef.current = jumpHighlightBlockId
-            }
-          } else if (dom.dataset.jumpHighlight) {
-            delete dom.dataset.jumpHighlight
-          }
-        }
-      })
-    }
-
-    applyHighlight()
-
-    const unregisterUpdate = editor.registerUpdateListener(() => {
-      applyHighlight()
-    })
-
-    const unregisterKeyDown = editor.registerCommand<KeyboardEvent>(
-      KEY_DOWN_COMMAND,
-      (event) => {
-        if (!jumpHighlightBlockId) return false
-
-        const isTypingKey =
-          (event.key.length === 1 && !event.metaKey && !event.ctrlKey) ||
-          event.key === 'Backspace' ||
-          event.key === 'Delete' ||
-          event.key === 'Enter'
-
-        if (isTypingKey) clearJumpHighlight()
-        return false
-      },
-      COMMAND_PRIORITY_LOW
-    )
-
-    const unregisterPaste = editor.registerCommand<ClipboardEvent>(
-      PASTE_COMMAND,
-      () => {
-        if (jumpHighlightBlockId) clearJumpHighlight()
-        return false
-      },
-      COMMAND_PRIORITY_LOW
-    )
-
-    return () => {
-      animatedBlockIdRef.current = null
-      unregisterUpdate()
-      unregisterKeyDown()
-      unregisterPaste()
-    }
-  }, [clearJumpHighlight, editor, jumpHighlightBlockId])
-
-  return null
-}
-
 function getFirstSelectableText(node: LexicalNode | null): LexicalNode | null {
   if (!node) return null
   if ($isTextNode(node)) return node
@@ -542,7 +465,6 @@ export function ScreenplayEditor({
         {!readOnly && <PasteNormalizerPlugin />}
         {!readOnly && <ActiveScenePlugin />}
         <FocusedBlockPlugin />
-        <JumpHighlightPlugin />
         <CursorRestorePlugin />
         <CursorReturnHighlightPlugin />
         <CursorAnchorPlugin />

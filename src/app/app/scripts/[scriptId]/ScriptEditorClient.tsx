@@ -42,6 +42,7 @@ export function ScriptEditorClient({
   const setPendingCursorRestorePlacement = useScriptStore((s) => s.setPendingCursorRestorePlacement)
   const setPendingExternalBlocks = useScriptStore((s) => s.setPendingExternalBlocks)
   const hydrateWritingPin = useScriptStore((s) => s.hydrateWritingPin)
+  const triggerCursorReturnHighlight = useScriptStore((s) => s.triggerCursorReturnHighlight)
   const blocks = useScriptStore((s) => s.blocks)
   const writingPin = useScriptStore((s) => s.writingPin)
   const editorNotice = useScriptStore((s) => s.editorNotice)
@@ -162,7 +163,10 @@ export function ScriptEditorClient({
 
     const tryScroll = () => {
       if (cancelled || !targetBlockId) return
-      if (scrollToBlock(targetBlockId, { placement: 'search-result' })) return
+      if (scrollToBlock(targetBlockId, { placement: 'search-result' })) {
+        triggerCursorReturnHighlight(targetBlockId)
+        return
+      }
       attempts += 1
       if (attempts < 20) {
         window.setTimeout(tryScroll, 120)
@@ -189,6 +193,7 @@ export function ScriptEditorClient({
     setJumpHighlightBlockId,
     setPendingCursorRestore,
     setPendingCursorRestorePlacement,
+    triggerCursorReturnHighlight,
   ])
 
   const handleReturnToWriting = useCallback(() => {

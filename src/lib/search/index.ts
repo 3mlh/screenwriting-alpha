@@ -41,6 +41,54 @@ function buildSearchText(parts: Array<string | undefined>): string {
   return normalizeForSearch(parts.filter(Boolean).join(' '))
 }
 
+function buildChunkSearchFields(input: {
+  blockType: Block['type']
+  blockText: string
+  actLabel?: string
+  sceneLabel?: string
+  speaker?: string
+}) {
+  const semanticParts = [
+    input.actLabel ? `Act: ${input.actLabel}` : undefined,
+    input.sceneLabel ? `Scene: ${input.sceneLabel}` : undefined,
+    input.blockType === 'dialogue' || input.blockType === 'parenthetical'
+      ? input.speaker
+        ? `Speaker: ${input.speaker}`
+        : undefined
+      : `Type: ${input.blockType}`,
+    input.blockType === 'dialogue' || input.blockType === 'parenthetical'
+      ? `Dialogue: ${input.blockText}`
+      : `Text: ${input.blockText}`,
+  ].filter(Boolean)
+
+  return {
+    normalizedText: normalizeForSearch(input.blockText),
+    searchText: buildSearchText([
+      input.blockText,
+      input.actLabel,
+      input.sceneLabel,
+      input.speaker,
+    ]),
+    semanticText: semanticParts.join('. '),
+  }
+}
+
+function buildChunkEmbeddingPayload(input: {
+  blockType: Block['type']
+  semanticText: string
+  actLabel?: string
+  sceneLabel?: string
+  speaker?: string
+}) {
+  return {
+    semantic_text: input.semanticText,
+    block_type: input.blockType,
+    act_label: input.actLabel ?? null,
+    scene_label: input.sceneLabel ?? null,
+    speaker: input.speaker ?? null,
+  }
+}
+
 function getSectionType(block: Block): string | undefined {
   if (block.type !== 'section' || !block.metadata || typeof block.metadata !== 'object') {
     return undefined
@@ -123,14 +171,29 @@ export function buildScriptSearchChunks(blocks: Block[]): SearchIndexChunkInput[
         ? currentSpeaker
         : undefined
     const speakerNormalized = speaker ? normalizeForSearch(speaker) : undefined
+    const searchFields = buildChunkSearchFields({
+      blockType: block.type,
+      blockText: trimmed,
+      actLabel: currentActLabel,
+      sceneLabel: currentSceneLabel,
+      speaker,
+    })
+    const embeddingPayload = buildChunkEmbeddingPayload({
+      blockType: block.type,
+      semanticText: searchFields.semanticText,
+      actLabel: currentActLabel,
+      sceneLabel: currentSceneLabel,
+      speaker,
+    })
 
     rows.push({
       blockId: block.id,
       blockType: block.type,
       position: block.position,
       blockText: trimmed,
-      normalizedText: normalizeForSearch(trimmed),
-      searchText: buildSearchText([trimmed, currentActLabel, currentSceneLabel, speaker]),
+      normalizedText: searchFields.normalizedText,
+      searchText: searchFields.searchText,
+      semanticText: searchFields.semanticText,
       actLabel: currentActLabel,
       actNormalized: currentActNormalized,
       sceneLabel: currentSceneLabel,
@@ -143,6 +206,8 @@ export function buildScriptSearchChunks(blocks: Block[]): SearchIndexChunkInput[
         block.metadata && typeof block.metadata === 'object'
           ? (block.metadata as Record<string, unknown>)
           : {},
+      embeddingVersion: 'semantic-v1',
+      embeddingPayload,
     })
   }
 
@@ -157,6 +222,7 @@ export function serializeSearchChunksForRpc(rows: SearchIndexChunkInput[]): Json
     block_text: row.blockText,
     normalized_text: row.normalizedText,
     search_text: row.searchText,
+    semantic_text: row.semanticText ?? null,
     act_label: row.actLabel ?? null,
     act_normalized: row.actNormalized ?? null,
     scene_label: row.sceneLabel ?? null,

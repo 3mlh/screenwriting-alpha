@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/lib/supabase/database.types'
-import type { ScriptSearchResult, SearchCandidate, SearchQueryAnalysis } from './types'
+import type { ScriptSearchResult, SearchCandidate, SearchQueryAnalysis, SearchRetrievalInput } from './types'
 import { normalizeForSearch } from './index'
 
 type AppSupabaseClient = SupabaseClient<Database>
@@ -54,6 +54,21 @@ function extractCharacterHint(rawQuery: string): string | undefined {
   return undefined
 }
 
+function buildSemanticSearchQuery(rawQuery: string): string {
+  return rawQuery
+    .trim()
+    .replace(/^(where|what|when|who)\s+(does|did|is)\s+/i, '')
+    .replace(/^what\s+scene\s+/i, '')
+    .replace(/^(find|show|tell)\s+me\s+/i, '')
+    .replace(/^the\s+scene\s+where\s+/i, '')
+    .replace(/\?+$/g, '')
+    .trim()
+}
+
+function hasDistinctSemanticQuery(query: SearchQueryAnalysis): boolean {
+  return normalizeForSearch(query.semanticQuery) !== query.normalizedQuery
+}
+
 export function analyzeSearchQuery(rawQuery: string): SearchQueryAnalysis {
   const trimmed = rawQuery.trim()
   const normalizedQuery = normalizeForSearch(trimmed)
@@ -71,6 +86,7 @@ export function analyzeSearchQuery(rawQuery: string): SearchQueryAnalysis {
   return {
     rawQuery: trimmed,
     normalizedQuery,
+    semanticQuery: buildSemanticSearchQuery(trimmed),
     quotedPhrases,
     terms,
     characterHint,
@@ -166,6 +182,11 @@ export function scoreSearchCandidate(
   return score
 }
 
+function scoreCandidateBySource(candidate: SearchCandidate): number {
+  if (candidate.retrievalSource === 'semantic') return 0
+  return 0
+}
+
 export function rankSearchCandidates(
   candidates: SearchCandidate[],
   query: SearchQueryAnalysis,
@@ -174,7 +195,9 @@ export function rankSearchCandidates(
   return candidates
     .map((candidate) => ({
       candidate,
-      score: scoreSearchCandidate(candidate, query, currentScriptId),
+      score:
+        scoreSearchCandidate(candidate, query, currentScriptId) +
+        scoreCandidateBySource(candidate),
     }))
     .sort((a, b) => b.score - a.score || a.candidate.position - b.candidate.position)
     .map(({ candidate }) => ({
@@ -187,6 +210,48 @@ export function rankSearchCandidates(
       sceneLabel: candidate.sceneLabel ?? undefined,
       speaker: candidate.speaker ?? undefined,
     }))
+}
+
+async function fetchLexicalSearchCandidates(
+  supabase: AppSupabaseClient,
+  input: SearchRetrievalInput
+): Promise<SearchCandidate[]> {
+  const candidateLimit = Math.max(input.limit * 5, 25)
+  const { data, error } = await supabase.rpc('search_project_script_candidates', {
+    p_project_id: input.projectId,
+    p_user_id: input.userId,
+    p_query: input.analysis.normalizedQuery,
+    p_limit: candidateLimit,
+  })
+
+  if (error) throw error
+
+  return ((data ?? []) as Database['public']['Functions']['search_project_script_candidates']['Returns']).map(
+    (row): SearchCandidate => ({
+      scriptId: row.script_id,
+      scriptTitle: row.script_title,
+      blockId: row.block_id,
+      blockType: row.block_type,
+      blockText: row.block_text,
+      actLabel: row.act_label,
+      sceneLabel: row.scene_label,
+      speaker: row.speaker,
+      position: row.block_position,
+      retrievalScore: row.retrieval_score,
+      exactMatch: row.exact_match,
+      tokenHits: row.token_hits,
+      retrievalSource: 'lexical',
+    })
+  )
+}
+
+async function fetchSemanticSearchCandidates(
+  _supabase: AppSupabaseClient,
+  input: SearchRetrievalInput
+): Promise<SearchCandidate[]> {
+  if (!input.analysis.semanticQuery) return []
+  if (!hasDistinctSemanticQuery(input.analysis)) return []
+  return []
 }
 
 export async function searchProjectScripts(
@@ -202,32 +267,18 @@ export async function searchProjectScripts(
   const analysis = analyzeSearchQuery(input.query)
   if (!analysis.normalizedQuery) return []
 
-  const candidateLimit = Math.max((input.limit ?? 8) * 5, 25)
-  const { data, error } = await supabase.rpc('search_project_script_candidates', {
-    p_project_id: input.projectId,
-    p_user_id: input.userId,
-    p_query: analysis.normalizedQuery,
-    p_limit: candidateLimit,
-  })
+  const limit = input.limit ?? 8
+  const retrievalInput = {
+    projectId: input.projectId,
+    userId: input.userId,
+    limit,
+    analysis,
+  }
 
-  if (error) throw error
+  const semanticCandidates = await fetchSemanticSearchCandidates(supabase, retrievalInput)
+  const candidates = semanticCandidates.length > 0
+    ? semanticCandidates
+    : await fetchLexicalSearchCandidates(supabase, retrievalInput)
 
-  const candidates = ((data ?? []) as Database['public']['Functions']['search_project_script_candidates']['Returns']).map(
-    (row): SearchCandidate => ({
-      scriptId: row.script_id,
-      scriptTitle: row.script_title,
-      blockId: row.block_id,
-      blockType: row.block_type,
-      blockText: row.block_text,
-      actLabel: row.act_label,
-      sceneLabel: row.scene_label,
-      speaker: row.speaker,
-      position: row.block_position,
-      retrievalScore: row.retrieval_score,
-      exactMatch: row.exact_match,
-      tokenHits: row.token_hits,
-    })
-  )
-
-  return rankSearchCandidates(candidates, analysis, input.currentScriptId).slice(0, input.limit ?? 8)
+  return rankSearchCandidates(candidates, analysis, input.currentScriptId).slice(0, limit)
 }

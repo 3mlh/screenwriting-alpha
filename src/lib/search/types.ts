@@ -7,6 +7,7 @@ export interface SearchIndexChunkInput {
   blockText: string
   normalizedText: string
   searchText: string
+  semanticText?: string
   actLabel?: string
   actNormalized?: string
   sceneLabel?: string
@@ -23,10 +24,18 @@ export interface SearchIndexChunkInput {
 export interface SearchQueryAnalysis {
   rawQuery: string
   normalizedQuery: string
+  semanticQuery: string
   quotedPhrases: string[]
   terms: string[]
   characterHint?: string
   normalizedCharacterHint?: string
+}
+
+export interface SearchRetrievalInput {
+  projectId: string
+  userId: string
+  limit: number
+  analysis: SearchQueryAnalysis
 }
 
 export interface SearchCandidate {
@@ -42,6 +51,7 @@ export interface SearchCandidate {
   retrievalScore: number
   exactMatch: boolean
   tokenHits: number
+  retrievalSource?: 'lexical' | 'semantic'
 }
 
 export interface ScriptSearchResult {
