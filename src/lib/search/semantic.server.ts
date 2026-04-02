@@ -10,6 +10,31 @@ import {
 
 type AppSupabaseClient = SupabaseClient<Database>
 
+async function describeFunctionInvokeError(error: unknown): Promise<Error> {
+  if (!error || typeof error !== 'object') {
+    return error instanceof Error ? error : new Error(String(error))
+  }
+
+  const response = 'context' in error ? (error as { context?: Response }).context : undefined
+  if (!response) {
+    return error instanceof Error ? error : new Error(String(error))
+  }
+
+  let bodyText = ''
+  try {
+    bodyText = await response.clone().text()
+  } catch {
+    bodyText = ''
+  }
+
+  const statusLine = `${response.status}${response.statusText ? ` ${response.statusText}` : ''}`
+  const message = bodyText
+    ? `Search embed function failed (${statusLine}): ${bodyText}`
+    : `Search embed function failed (${statusLine})`
+
+  return new Error(message)
+}
+
 export async function generateSearchEmbeddings(
   supabase: AppSupabaseClient,
   inputs: string[]
@@ -28,7 +53,7 @@ export async function generateSearchEmbeddings(
       }
     )
 
-    if (error) throw error
+    if (error) throw await describeFunctionInvokeError(error)
 
     const batchEmbeddings = data?.embeddings ?? []
     if (batchEmbeddings.length !== batch.length) {

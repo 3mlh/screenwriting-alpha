@@ -40,3 +40,6 @@ enable_signup = false
 
 [analytics]
 enabled = false
+
+[functions.search-embed]
+verify_jwt = false

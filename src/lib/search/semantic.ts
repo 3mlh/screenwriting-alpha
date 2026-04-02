@@ -1,7 +1,7 @@
 export const SEARCH_EMBEDDING_MODEL = 'gte-small'
 export const SEARCH_EMBEDDING_DIMENSIONS = 384
 export const SEARCH_EMBED_FUNCTION = 'search-embed'
-export const SEARCH_EMBEDDING_MAX_INPUTS = 32
+export const SEARCH_EMBEDDING_MAX_INPUTS = 8
 
 export interface SearchEmbeddingRequest {
   inputs: string[]

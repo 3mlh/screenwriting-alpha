@@ -74,11 +74,10 @@ export async function PUT(request: Request, { params }: Params) {
     }
 
     const { updatedAt } = await saveScriptBlocks(supabase, scriptId, blocks)
-    try {
-      await replaceScriptSearchChunks(supabase, user.id, scriptId, blocks)
-    } catch (indexError) {
+
+    void replaceScriptSearchChunks(supabase, user.id, scriptId, blocks).catch((indexError) => {
       console.error('Failed to refresh search index after autosave:', indexError)
-    }
+    })
 
     return NextResponse.json({ savedAt: updatedAt, ...(snapshotId ? { snapshotId } : {}) })
   } catch (err) {

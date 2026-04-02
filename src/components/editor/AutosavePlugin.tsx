@@ -29,6 +29,25 @@ import { useScriptStore } from '@/stores/scriptStore'
 const DEBOUNCE_MS = 2000
 const LAST_SNAPSHOT_KEY = (scriptId: string) => `lastSnapshotAt:${scriptId}`
 
+function isInternalNavigationTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof Element)) return false
+
+  const link = target.closest('a[href]')
+  if (!(link instanceof HTMLAnchorElement)) return false
+  if (link.target && link.target !== '_self') return false
+  if (link.hasAttribute('download')) return false
+
+  const href = link.getAttribute('href')
+  if (!href || href.startsWith('#')) return false
+
+  try {
+    const url = new URL(link.href, window.location.href)
+    return url.origin === window.location.origin
+  } catch {
+    return false
+  }
+}
+
 export function AutosavePlugin({ scriptId }: { scriptId: string }): null {
   const [editor] = useLexicalComposerContext()
   const blocksRef = useRef(useScriptStore.getState().blocks)
@@ -48,7 +67,7 @@ export function AutosavePlugin({ scriptId }: { scriptId: string }): null {
     })
   }, [])
 
-  const save = useCallback(async () => {
+  const save = useCallback(async (options?: { keepalive?: boolean }) => {
     if (isSavingRef.current) return
     if (!isDirtyRef.current) return
 
@@ -62,6 +81,7 @@ export function AutosavePlugin({ scriptId }: { scriptId: string }): null {
       const res = await fetch(`/api/scripts/${scriptId}/blocks`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
+        keepalive: options?.keepalive,
         body: JSON.stringify({ blocks, lastSnapshotAt }),
       })
 
@@ -92,6 +112,15 @@ export function AutosavePlugin({ scriptId }: { scriptId: string }): null {
     }
   }, [scriptId, setAutosaveStatus, setEditorDirty, setLastOwnSavedAt])
 
+  const flushPendingSave = useCallback((options?: { keepalive?: boolean }) => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current)
+      timerRef.current = null
+    }
+
+    void save(options)
+  }, [save])
+
   const scheduleDebounce = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current)
     timerRef.current = setTimeout(save, DEBOUNCE_MS)
@@ -106,43 +135,74 @@ export function AutosavePlugin({ scriptId }: { scriptId: string }): null {
     })
     return () => {
       unsub()
-      if (timerRef.current) clearTimeout(timerRef.current)
+      if (isDirtyRef.current) {
+        flushPendingSave({ keepalive: true })
+      } else if (timerRef.current) {
+        clearTimeout(timerRef.current)
+        timerRef.current = null
+      }
     }
-  }, [scheduleDebounce])
+  }, [flushPendingSave, scheduleDebounce])
 
   // Cmd+S / Ctrl+S — bypass debounce
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key === 's') {
         e.preventDefault()
-        if (timerRef.current) {
-          clearTimeout(timerRef.current)
-          timerRef.current = null
-        }
-        save()
+        flushPendingSave()
       }
     }
 
     // Register on the root element so we capture it even if the editor isn't focused
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [save])
+  }, [flushPendingSave])
 
   // Save on window blur (user navigates away)
   useEffect(() => {
     function handleBlur() {
       if (isDirtyRef.current) {
-        if (timerRef.current) {
-          clearTimeout(timerRef.current)
-          timerRef.current = null
-        }
-        save()
+        flushPendingSave({ keepalive: true })
       }
     }
 
     window.addEventListener('blur', handleBlur)
     return () => window.removeEventListener('blur', handleBlur)
-  }, [save])
+  }, [flushPendingSave])
+
+  useEffect(() => {
+    function handleVisibilityChange() {
+      if (document.hidden && isDirtyRef.current) {
+        flushPendingSave({ keepalive: true })
+      }
+    }
+
+    function handlePageHide() {
+      if (isDirtyRef.current) {
+        flushPendingSave({ keepalive: true })
+      }
+    }
+
+    function handleDocumentClick(event: MouseEvent) {
+      if (!isDirtyRef.current) return
+      if (event.defaultPrevented) return
+      if (event.button !== 0) return
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+      if (!isInternalNavigationTarget(event.target)) return
+
+      flushPendingSave()
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('pagehide', handlePageHide)
+    document.addEventListener('click', handleDocumentClick, true)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('pagehide', handlePageHide)
+      document.removeEventListener('click', handleDocumentClick, true)
+    }
+  }, [flushPendingSave])
 
   // editor is used to satisfy React's exhaustive-deps; it doesn't need to trigger effects
   void editor

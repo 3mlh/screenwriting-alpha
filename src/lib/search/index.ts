@@ -272,6 +272,11 @@ export async function replaceScriptSearchChunks(
   blocks: Block[]
 ): Promise<void> {
   const rows = await attachSearchEmbeddings(supabase, buildScriptSearchChunks(blocks))
+  console.log('replaceScriptSearchChunks embeddings', {
+    scriptId,
+    rowCount: rows.length,
+    embeddingCount: rows.filter((row) => Array.isArray(row.semanticEmbedding)).length,
+  })
   const { error } = await supabase.rpc('replace_script_search_chunks', {
     p_script_id: scriptId,
     p_user_id: userId,

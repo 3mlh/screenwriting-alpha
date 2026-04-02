@@ -3,8 +3,7 @@ import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 
 const MODEL = 'gte-small'
 const DIMENSIONS = 384
-const MAX_INPUTS = 32
-const session = new Supabase.ai.Session(MODEL)
+const MAX_INPUTS = 8
 
 interface SearchEmbeddingRequest {
   inputs: string[]
@@ -43,14 +42,18 @@ Deno.serve(async (request) => {
       return json({ error: `At most ${MAX_INPUTS} inputs are allowed per request` }, 400)
     }
 
-    const embeddings = await Promise.all(
-      inputs.map((input) =>
-        session.run(input, {
-          mean_pool: true,
-          normalize: true,
-        })
-      )
-    )
+    const session = new Supabase.ai.Session(MODEL)
+
+    const embeddings: number[][] = []
+
+    for (const input of inputs) {
+      const embedding = await session.run(input, {
+        mean_pool: true,
+        normalize: true,
+      })
+
+      embeddings.push(embedding)
+    }
 
     return json({
       model: MODEL,

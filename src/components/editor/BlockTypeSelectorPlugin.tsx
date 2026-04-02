@@ -11,6 +11,35 @@ import {
   DISPLAY_BLOCK_TYPE_LABELS,
 } from './blockTypeUtils'
 import type { DisplayBlockType } from './blockTypeUtils'
+import { useScriptStore } from '@/stores/scriptStore'
+
+function SaveStatusBadge(): React.ReactElement | null {
+  const autosaveStatus = useScriptStore((s) => s.autosaveStatus)
+  const isDirty = useScriptStore((s) => s.isDirty)
+
+  let tone: 'saving' | 'error' | 'unsaved' | null = null
+  let label = ''
+
+  if (autosaveStatus === 'saving') {
+    tone = 'saving'
+    label = 'Saving'
+  } else if (autosaveStatus === 'error') {
+    tone = 'error'
+    label = 'Save failed'
+  } else if (isDirty) {
+    tone = 'unsaved'
+    label = 'Unsaved'
+  }
+
+  if (!tone) return null
+
+  return (
+    <div className={`block-type-selector-save-indicator is-${tone}`} aria-live="polite">
+      <span className="block-type-selector-save-dot" aria-hidden="true" />
+      <span>{label}</span>
+    </div>
+  )
+}
 
 export function BlockTypeSelectorPlugin(): React.ReactElement {
   const [editor] = useLexicalComposerContext()
@@ -66,6 +95,7 @@ export function BlockTypeSelectorPlugin(): React.ReactElement {
           </option>
         ))}
       </select>
+      <SaveStatusBadge />
     </div>
   )
 }
