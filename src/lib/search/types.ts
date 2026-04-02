@@ -73,5 +73,7 @@ export interface StoredScriptSearchState {
   originScriptId: string
   query: string
   results: ScriptSearchResult[]
+  activeIndex?: number
+  scrollTop?: number
   createdAt: string
 }

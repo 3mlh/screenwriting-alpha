@@ -66,8 +66,11 @@ export function ScriptSearchControl({
   const searchParams = useSearchParams()
   const containerRef = useRef<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
+  const resultsScrollRef = useRef<HTMLDivElement | null>(null)
   const skipFetchForQueryRef = useRef<string | null>(null)
   const handledRestoreTokenRef = useRef<string | null>(null)
+  const resultsScrollTopRef = useRef(0)
+  const pendingScrollTopRef = useRef<number | null>(null)
 
   const [isOpen, setIsOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -93,6 +96,10 @@ export function ScriptSearchControl({
     if (!isOpen) return
     inputRef.current?.focus()
     inputRef.current?.select()
+    if (resultsScrollRef.current && pendingScrollTopRef.current !== null) {
+      resultsScrollRef.current.scrollTop = pendingScrollTopRef.current
+      pendingScrollTopRef.current = null
+    }
   }, [isOpen])
 
   useEffect(() => {
@@ -113,9 +120,13 @@ export function ScriptSearchControl({
     skipFetchForQueryRef.current = state.query
     setQuery(state.query)
     setResults(state.results)
-    setActiveIndex(0)
+    setActiveIndex(
+      Math.max(0, Math.min(state.activeIndex ?? 0, Math.max(state.results.length - 1, 0)))
+    )
     setError(null)
     setLoading(false)
+    resultsScrollTopRef.current = state.scrollTop ?? 0
+    pendingScrollTopRef.current = state.scrollTop ?? 0
     if (options?.open ?? true) setIsOpen(true)
     if (options?.clearReturnToken) setReturnToken(null)
   }
@@ -214,21 +225,23 @@ export function ScriptSearchControl({
     setIsOpen(true)
   }
 
-  function persistCurrentSearchState() {
+  function persistCurrentSearchState(selectedIndex = activeIndex) {
     const state: StoredScriptSearchState = {
       id: crypto.randomUUID(),
       projectId,
       originScriptId: currentScriptId,
       query,
       results,
+      activeIndex: selectedIndex,
+      scrollTop: resultsScrollTopRef.current,
       createdAt: new Date().toISOString(),
     }
     writeStoredSearchState(state)
     return state
   }
 
-  function jumpToResult(result: ScriptSearchResult) {
-    const state = persistCurrentSearchState()
+  function jumpToResult(result: ScriptSearchResult, index: number) {
+    const state = persistCurrentSearchState(index)
     setIsOpen(false)
     const href = `/app/scripts/${result.scriptId}?focusBlock=${encodeURIComponent(result.blockId)}&returnSearch=${encodeURIComponent(state.id)}`
 
@@ -272,7 +285,7 @@ export function ScriptSearchControl({
 
     if (event.key === 'Enter' && results[activeIndex]) {
       event.preventDefault()
-      jumpToResult(results[activeIndex])
+      jumpToResult(results[activeIndex], activeIndex)
       return
     }
 
@@ -320,7 +333,13 @@ export function ScriptSearchControl({
             </div>
           </div>
 
-          <div className="max-h-[24rem] overflow-y-auto">
+          <div
+            ref={resultsScrollRef}
+            className="max-h-[24rem] overflow-y-auto"
+            onScroll={(event) => {
+              resultsScrollTopRef.current = event.currentTarget.scrollTop
+            }}
+          >
             {loading && (
               <div className="px-4 py-4 text-sm text-gray-500">Searching scripts…</div>
             )}
@@ -342,7 +361,7 @@ export function ScriptSearchControl({
             {!loading && !error && results.map((result, index) => (
               <button
                 key={`${result.scriptId}:${result.blockId}`}
-                onClick={() => jumpToResult(result)}
+                onClick={() => jumpToResult(result, index)}
                 className={`w-full border-b border-stone-100 px-4 py-3 text-left transition last:border-b-0 ${
                   index === activeIndex ? 'bg-amber-50' : 'hover:bg-stone-50'
                 }`}

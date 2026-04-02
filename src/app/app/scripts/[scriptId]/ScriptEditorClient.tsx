@@ -212,15 +212,27 @@ export function ScriptEditorClient({
     target.set('restoreCursorBlock', writingPin.blockId)
     target.set('restoreCursorOffset', String(writingPin.offset))
 
-    const href = `/app/scripts/${writingPin.scriptId}?${target.toString()}`
-
     if (writingPin.scriptId === script.id) {
-      router.replace(href, { scroll: false })
+      setJumpHighlightBlockId(null)
+      setPendingCursorRestore({
+        blockId: writingPin.blockId,
+        offset: writingPin.offset,
+      })
+      setPendingCursorRestorePlacement('center-if-needed')
       return
     }
 
     setConfirmReturnOpen(true)
-  }, [blocks, clearWritingPin, router, script.id, setEditorNotice, writingPin])
+  }, [
+    blocks,
+    clearWritingPin,
+    script.id,
+    setEditorNotice,
+    setJumpHighlightBlockId,
+    setPendingCursorRestore,
+    setPendingCursorRestorePlacement,
+    writingPin,
+  ])
 
   const confirmReturnToWriting = useCallback(() => {
     if (!writingPin || writingPin.scriptId === script.id) {
