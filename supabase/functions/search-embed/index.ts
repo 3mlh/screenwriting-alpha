@@ -3,7 +3,7 @@ import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 
 const MODEL = 'gte-small'
 const DIMENSIONS = 384
-const MAX_INPUTS = 8
+const MAX_INPUTS = 1
 
 interface SearchEmbeddingRequest {
   inputs: string[]

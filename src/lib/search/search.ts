@@ -67,10 +67,6 @@ function buildSemanticSearchQuery(rawQuery: string): string {
     .trim()
 }
 
-function hasDistinctSemanticQuery(query: SearchQueryAnalysis): boolean {
-  return normalizeForSearch(query.semanticQuery) !== query.normalizedQuery
-}
-
 export function analyzeSearchQuery(rawQuery: string): SearchQueryAnalysis {
   const trimmed = rawQuery.trim()
   const normalizedQuery = normalizeForSearch(trimmed)
@@ -129,6 +125,17 @@ export function buildSearchSnippet(text: string, query: SearchQueryAnalysis, max
   const prefix = sliceStart > 0 ? '…' : ''
   const suffix = sliceEnd < trimmed.length ? '…' : ''
   return `${prefix}${trimmed.slice(sliceStart, sliceEnd).trim()}${suffix}`
+}
+
+function buildSnippetSource(candidate: SearchCandidate): string {
+  if (
+    (candidate.blockType === 'dialogue' || candidate.blockType === 'parenthetical') &&
+    candidate.speaker
+  ) {
+    return `${candidate.speaker}: ${candidate.blockText}`
+  }
+
+  return candidate.blockText
 }
 
 export function scoreSearchCandidate(
@@ -207,7 +214,7 @@ export function rankSearchCandidates(
       scriptTitle: candidate.scriptTitle,
       blockId: candidate.blockId,
       blockType: candidate.blockType,
-      snippet: buildSearchSnippet(candidate.blockText, query),
+      snippet: buildSearchSnippet(buildSnippetSource(candidate), query),
       actLabel: candidate.actLabel ?? undefined,
       sceneLabel: candidate.sceneLabel ?? undefined,
       speaker: candidate.speaker ?? undefined,
@@ -253,7 +260,6 @@ async function fetchSemanticSearchCandidates(
 ): Promise<SearchCandidate[]> {
   if (isLocalSearchSemanticDisabled()) return []
   if (!input.analysis.semanticQuery) return []
-  if (!hasDistinctSemanticQuery(input.analysis)) return []
 
   const [queryEmbedding] = await generateSearchEmbeddings(supabase, [input.analysis.semanticQuery])
   if (!queryEmbedding) return []
@@ -308,10 +314,9 @@ export async function searchProjectScripts(
     analysis,
   }
 
-  const semanticCandidates = await fetchSemanticSearchCandidates(supabase, retrievalInput)
-  const candidates = semanticCandidates.length > 0
-    ? semanticCandidates
-    : await fetchLexicalSearchCandidates(supabase, retrievalInput)
+  const candidates = isLocalSearchSemanticDisabled()
+    ? await fetchLexicalSearchCandidates(supabase, retrievalInput)
+    : await fetchSemanticSearchCandidates(supabase, retrievalInput)
 
   return rankSearchCandidates(candidates, analysis, input.currentScriptId).slice(0, limit)
 }

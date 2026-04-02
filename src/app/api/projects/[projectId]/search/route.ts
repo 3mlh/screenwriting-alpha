@@ -22,7 +22,12 @@ export async function POST(request: Request, { params }: Params) {
     const user = await requireUser(supabase)
     await requireProjectRole(supabase, projectId, 'viewer')
 
-    const body = await request.json()
+    let body: unknown
+    try {
+      body = await request.json()
+    } catch {
+      return NextResponse.json({ error: 'Invalid search request' }, { status: 400 })
+    }
     const input = searchRequestSchema.parse(body)
 
     let results = await searchProjectScripts(supabase, {

@@ -100,6 +100,20 @@ export function ScriptSearchControl({
     return () => document.removeEventListener('mousedown', handleMouseDown)
   }, [])
 
+  function applyStoredSearchState(
+    state: StoredScriptSearchState,
+    options?: { clearReturnToken?: boolean; open?: boolean }
+  ) {
+    skipFetchForQueryRef.current = state.query
+    setQuery(state.query)
+    setResults(state.results)
+    setActiveIndex(0)
+    setError(null)
+    setLoading(false)
+    if (options?.open ?? true) setIsOpen(true)
+    if (options?.clearReturnToken) setReturnToken(null)
+  }
+
   useEffect(() => {
     if (!restoreToken || handledRestoreTokenRef.current === restoreToken) return
 
@@ -107,14 +121,7 @@ export function ScriptSearchControl({
     if (!state || state.projectId !== projectId || state.originScriptId !== currentScriptId) return
 
     handledRestoreTokenRef.current = restoreToken
-    skipFetchForQueryRef.current = state.query
-    setQuery(state.query)
-    setResults(state.results)
-    setActiveIndex(0)
-    setError(null)
-    setLoading(false)
-    setIsOpen(true)
-    setReturnToken(null)
+    applyStoredSearchState(state, { clearReturnToken: true, open: true })
     router.replace(pathname, { scroll: false })
   }, [currentScriptId, pathname, projectId, restoreToken, router])
 
@@ -173,7 +180,17 @@ export function ScriptSearchControl({
   }, [currentScriptId, isOpen, projectId, query])
 
   function handleOpenToggle() {
-    setIsOpen((open) => !open)
+    if (isOpen) {
+      setIsOpen(false)
+      return
+    }
+
+    if (returnToken && returnState) {
+      applyStoredSearchState(returnState, { open: true })
+      return
+    }
+
+    setIsOpen(true)
   }
 
   function persistCurrentSearchState() {
@@ -195,17 +212,6 @@ export function ScriptSearchControl({
     router.push(
       `/app/scripts/${result.scriptId}?focusBlock=${encodeURIComponent(result.blockId)}&returnSearch=${encodeURIComponent(state.id)}`
     )
-  }
-
-  function handleBackToResults() {
-    if (!returnToken || !returnState) return
-
-    if (returnState.originScriptId === currentScriptId) {
-      router.replace(`/app/scripts/${currentScriptId}?restoreSearch=${encodeURIComponent(returnToken)}`)
-      return
-    }
-
-    router.push(`/app/scripts/${returnState.originScriptId}?restoreSearch=${encodeURIComponent(returnToken)}`)
   }
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
@@ -235,23 +241,10 @@ export function ScriptSearchControl({
 
   return (
     <div ref={containerRef} className="relative flex items-center gap-2">
-      {returnToken && returnState && (
-        <button
-          onClick={handleBackToResults}
-          className="flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-800 hover:bg-amber-100 transition-colors"
-        >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-            <path d="M19 12H5" />
-            <path d="M12 19l-7-7 7-7" />
-          </svg>
-          Back to results
-        </button>
-      )}
-
       <button
         onClick={handleOpenToggle}
         className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
-          isOpen
+          isOpen || (returnToken && returnState)
             ? 'border-amber-300 bg-amber-50 text-amber-900'
             : 'border-stone-200 text-gray-600 hover:bg-stone-50 hover:text-gray-900'
         }`}
