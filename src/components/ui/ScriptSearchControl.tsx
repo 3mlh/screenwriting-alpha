@@ -2,7 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { scrollToBlock } from '@/lib/editor/scrollToBlock'
 import type { ScriptSearchResult, StoredScriptSearchState } from '@/lib/search/types'
+import { useScriptStore } from '@/stores/scriptStore'
 
 const SESSION_KEY_PREFIX = 'private-script-search'
 
@@ -74,6 +76,9 @@ export function ScriptSearchControl({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [returnToken, setReturnToken] = useState<string | null>(null)
+  const [returnStateOverride, setReturnStateOverride] = useState<StoredScriptSearchState | null>(null)
+  const setJumpHighlightBlockId = useScriptStore((s) => s.setJumpHighlightBlockId)
+  const triggerCursorReturnHighlight = useScriptStore((s) => s.triggerCursorReturnHighlight)
 
   const restoreToken = searchParams.get('restoreSearch')
   const searchReturnToken = searchParams.get('returnSearch')
@@ -82,6 +87,7 @@ export function ScriptSearchControl({
     () => (searchReturnToken ? readStoredSearchState(searchReturnToken) : null),
     [searchReturnToken]
   )
+  const activeReturnState = returnStateOverride ?? returnState
 
   useEffect(() => {
     if (!isOpen) return
@@ -121,6 +127,7 @@ export function ScriptSearchControl({
     if (!state || state.projectId !== projectId || state.originScriptId !== currentScriptId) return
 
     handledRestoreTokenRef.current = restoreToken
+    setReturnStateOverride(null)
     applyStoredSearchState(state, { clearReturnToken: true, open: true })
     router.replace(pathname, { scroll: false })
   }, [currentScriptId, pathname, projectId, restoreToken, router])
@@ -131,6 +138,7 @@ export function ScriptSearchControl({
       setReturnToken(null)
       return
     }
+    setReturnStateOverride(null)
     setReturnToken(token)
   }, [returnState, searchReturnToken])
 
@@ -179,14 +187,27 @@ export function ScriptSearchControl({
     }
   }, [currentScriptId, isOpen, projectId, query])
 
+  useEffect(() => {
+    if (!isOpen || results.length === 0) return
+
+    const seen = new Set<string>()
+    for (const result of results) {
+      if (result.scriptId === currentScriptId) continue
+      if (seen.has(result.scriptId)) continue
+      seen.add(result.scriptId)
+      router.prefetch(`/app/scripts/${result.scriptId}`)
+      if (seen.size >= 3) break
+    }
+  }, [currentScriptId, isOpen, results, router])
+
   function handleOpenToggle() {
     if (isOpen) {
       setIsOpen(false)
       return
     }
 
-    if (returnToken && returnState) {
-      applyStoredSearchState(returnState, { open: true })
+    if (returnToken && activeReturnState) {
+      applyStoredSearchState(activeReturnState, { open: true })
       return
     }
 
@@ -209,9 +230,31 @@ export function ScriptSearchControl({
   function jumpToResult(result: ScriptSearchResult) {
     const state = persistCurrentSearchState()
     setIsOpen(false)
-    router.push(
-      `/app/scripts/${result.scriptId}?focusBlock=${encodeURIComponent(result.blockId)}&returnSearch=${encodeURIComponent(state.id)}`
-    )
+    const href = `/app/scripts/${result.scriptId}?focusBlock=${encodeURIComponent(result.blockId)}&returnSearch=${encodeURIComponent(state.id)}`
+
+    if (result.scriptId === currentScriptId) {
+      setReturnToken(state.id)
+      setReturnStateOverride(state)
+      setJumpHighlightBlockId(result.blockId)
+
+      let attempts = 0
+      const tryScroll = () => {
+        if (scrollToBlock(result.blockId, { placement: 'search-result' })) {
+          triggerCursorReturnHighlight(result.blockId)
+          return
+        }
+
+        attempts += 1
+        if (attempts < 10) {
+          window.setTimeout(tryScroll, 40)
+        }
+      }
+
+      window.requestAnimationFrame(tryScroll)
+      return
+    }
+
+    router.push(href)
   }
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
@@ -244,7 +287,7 @@ export function ScriptSearchControl({
       <button
         onClick={handleOpenToggle}
         className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
-          isOpen || (returnToken && returnState)
+          isOpen || (returnToken && activeReturnState)
             ? 'border-amber-300 bg-amber-50 text-amber-900'
             : 'border-stone-200 text-gray-600 hover:bg-stone-50 hover:text-gray-900'
         }`}
